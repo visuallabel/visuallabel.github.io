@@ -1,0 +1,154 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+<head>
+<title>Source code</title>
+<link rel="stylesheet" type="text/css" href="../../../../../../stylesheet.css" title="Style">
+</head>
+<body>
+<div class="sourceContainer">
+<pre><span class="sourceLineNo">001</span>/**<a name="line.1"></a>
+<span class="sourceLineNo">002</span> * Copyright 2015 Tampere University of Technology, Pori Unit<a name="line.2"></a>
+<span class="sourceLineNo">003</span> * <a name="line.3"></a>
+<span class="sourceLineNo">004</span> * Licensed under the Apache License, Version 2.0 (the "License");<a name="line.4"></a>
+<span class="sourceLineNo">005</span> * you may not use this file except in compliance with the License.<a name="line.5"></a>
+<span class="sourceLineNo">006</span> * You may obtain a copy of the License at<a name="line.6"></a>
+<span class="sourceLineNo">007</span> * <a name="line.7"></a>
+<span class="sourceLineNo">008</span> *   http://www.apache.org/licenses/LICENSE-2.0<a name="line.8"></a>
+<span class="sourceLineNo">009</span> * <a name="line.9"></a>
+<span class="sourceLineNo">010</span> * Unless required by applicable law or agreed to in writing, software<a name="line.10"></a>
+<span class="sourceLineNo">011</span> * distributed under the License is distributed on an "AS IS" BASIS,<a name="line.11"></a>
+<span class="sourceLineNo">012</span> * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<a name="line.12"></a>
+<span class="sourceLineNo">013</span> * See the License for the specific language governing permissions and<a name="line.13"></a>
+<span class="sourceLineNo">014</span> * limitations under the License.<a name="line.14"></a>
+<span class="sourceLineNo">015</span> */<a name="line.15"></a>
+<span class="sourceLineNo">016</span>package service.tut.pori.contentstorage.reference;<a name="line.16"></a>
+<span class="sourceLineNo">017</span><a name="line.17"></a>
+<span class="sourceLineNo">018</span>import service.tut.pori.contentanalysis.CAContentCore.ServiceType;<a name="line.18"></a>
+<span class="sourceLineNo">019</span>import service.tut.pori.contentstorage.Definitions;<a name="line.19"></a>
+<span class="sourceLineNo">020</span>import service.tut.pori.contentstorage.MediaList;<a name="line.20"></a>
+<span class="sourceLineNo">021</span>import core.tut.pori.http.Response;<a name="line.21"></a>
+<span class="sourceLineNo">022</span>import core.tut.pori.http.Response.Status;<a name="line.22"></a>
+<span class="sourceLineNo">023</span>import core.tut.pori.http.annotations.HTTPAuthenticationParameter;<a name="line.23"></a>
+<span class="sourceLineNo">024</span>import core.tut.pori.http.annotations.HTTPMethodParameter;<a name="line.24"></a>
+<span class="sourceLineNo">025</span>import core.tut.pori.http.annotations.HTTPService;<a name="line.25"></a>
+<span class="sourceLineNo">026</span>import core.tut.pori.http.annotations.HTTPServiceMethod;<a name="line.26"></a>
+<span class="sourceLineNo">027</span>import core.tut.pori.http.parameters.AuthenticationParameter;<a name="line.27"></a>
+<span class="sourceLineNo">028</span>import core.tut.pori.http.parameters.IntegerParameter;<a name="line.28"></a>
+<span class="sourceLineNo">029</span>import core.tut.pori.http.parameters.StringParameter;<a name="line.29"></a>
+<span class="sourceLineNo">030</span><a name="line.30"></a>
+<span class="sourceLineNo">031</span>/**<a name="line.31"></a>
+<span class="sourceLineNo">032</span> * Reference implementation for client API methods.<a name="line.32"></a>
+<span class="sourceLineNo">033</span> * <a name="line.33"></a>
+<span class="sourceLineNo">034</span> * &lt;h1&gt;Implementation Service path {@value service.tut.pori.contentstorage.Definitions#SERVICE_CS}&lt;/h1&gt;<a name="line.34"></a>
+<span class="sourceLineNo">035</span> * <a name="line.35"></a>
+<span class="sourceLineNo">036</span> * @see service.tut.pori.contentstorage.ContentStorageService<a name="line.36"></a>
+<span class="sourceLineNo">037</span> * <a name="line.37"></a>
+<span class="sourceLineNo">038</span> */<a name="line.38"></a>
+<span class="sourceLineNo">039</span>@HTTPService(name = service.tut.pori.contentstorage.reference.Definitions.SERVICE_COS_REFERENCE_CLIENT)<a name="line.39"></a>
+<span class="sourceLineNo">040</span>public class ClientService {<a name="line.40"></a>
+<span class="sourceLineNo">041</span>  /**<a name="line.41"></a>
+<span class="sourceLineNo">042</span>   * This method allows the user to initialize external account synchronization. The synchronization process is always performed as a scheduled task, and thus, may not complete immediately. For new content discovered during the synchronization process, a new analysis task will be created, and the task will be automatically added for the appropriate analysis back-ends.<a name="line.42"></a>
+<span class="sourceLineNo">043</span>   * <a name="line.43"></a>
+<span class="sourceLineNo">044</span>   * @param authenticatedUser Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.44"></a>
+<span class="sourceLineNo">045</span>   * @param backendId Back-ends used for the analysis of the generated tasks. If no back-end IDs are given, the default back-ends will be used. An attempt to give incompatible back-ends may result in failure of the entire task. When providing specific back-ends by Id one should make sure that the back-ends are capable of performing the requested tasks.<a name="line.45"></a>
+<span class="sourceLineNo">046</span>   * @param serviceId Any combination of supported external providers designated by serviceIds. The supported id values are: 1 (Picasa), 2 (FSIO), 4 (Facebook), 6 (Twitter), 7 (Url Storage). See {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}<a name="line.46"></a>
+<span class="sourceLineNo">047</span>   */<a name="line.47"></a>
+<span class="sourceLineNo">048</span>  @HTTPServiceMethod(name=Definitions.METHOD_SYNCHRONIZE)<a name="line.48"></a>
+<span class="sourceLineNo">049</span>  public void synchronize(<a name="line.49"></a>
+<span class="sourceLineNo">050</span>      @HTTPAuthenticationParameter(required=false) AuthenticationParameter authenticatedUser,<a name="line.50"></a>
+<span class="sourceLineNo">051</span>      @HTTPMethodParameter(name=service.tut.pori.contentanalysis.Definitions.PARAMETER_BACKEND_ID, required = false) IntegerParameter backendId,<a name="line.51"></a>
+<span class="sourceLineNo">052</span>      @HTTPMethodParameter(name=service.tut.pori.contentanalysis.Definitions.PARAMETER_SERVICE_ID) IntegerParameter serviceId<a name="line.52"></a>
+<span class="sourceLineNo">053</span>      )<a name="line.53"></a>
+<span class="sourceLineNo">054</span>  {<a name="line.54"></a>
+<span class="sourceLineNo">055</span>    ContentStorageReferenceCore.synchronize(authenticatedUser.getUserIdentity(), backendId.getValues(), ServiceType.fromIdArray(serviceId.getValues()));<a name="line.55"></a>
+<span class="sourceLineNo">056</span>  }<a name="line.56"></a>
+<span class="sourceLineNo">057</span>  <a name="line.57"></a>
+<span class="sourceLineNo">058</span>  /**<a name="line.58"></a>
+<span class="sourceLineNo">059</span>   * This method can be used to add files denoted by arbitrary URL links to the service. Photo and video analysis tasks will be scheduled for the added URLs and submitted for back-ends.<a name="line.59"></a>
+<span class="sourceLineNo">060</span>   * <a name="line.60"></a>
+<span class="sourceLineNo">061</span>   * The files must be publicly accessible and of one of file types supported by the validator {@link core.tut.pori.utils.MediaUrlValidator}.<a name="line.61"></a>
+<span class="sourceLineNo">062</span>   * <a name="line.62"></a>
+<span class="sourceLineNo">063</span>   * @param authenticatedUser Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.63"></a>
+<span class="sourceLineNo">064</span>   * @param backendId Back-ends used for the analysis of the generated tasks. If no back-end IDs are given, the default back-ends will be used. An attempt to give incompatible back-ends may result in failure of the entire task. When providing specific back-ends by Id one should make sure that the back-ends are capable of performing the requested tasks.<a name="line.64"></a>
+<span class="sourceLineNo">065</span>   * @param url Any number of URL links.<a name="line.65"></a>
+<span class="sourceLineNo">066</span>   * @return See {@link service.tut.pori.contentstorage.MediaList}<a name="line.66"></a>
+<span class="sourceLineNo">067</span>   */<a name="line.67"></a>
+<span class="sourceLineNo">068</span>  @HTTPServiceMethod(name=Definitions.METHOD_ADD_URL, acceptedMethods={core.tut.pori.http.Definitions.METHOD_POST})<a name="line.68"></a>
+<span class="sourceLineNo">069</span>  public Response addUrl(<a name="line.69"></a>
+<span class="sourceLineNo">070</span>      @HTTPAuthenticationParameter(required=false) AuthenticationParameter authenticatedUser,<a name="line.70"></a>
+<span class="sourceLineNo">071</span>      @HTTPMethodParameter(name=service.tut.pori.contentanalysis.Definitions.PARAMETER_BACKEND_ID, required = false) IntegerParameter backendId,<a name="line.71"></a>
+<span class="sourceLineNo">072</span>      @HTTPMethodParameter(name=service.tut.pori.contentanalysis.Definitions.PARAMETER_URL) StringParameter url<a name="line.72"></a>
+<span class="sourceLineNo">073</span>      )<a name="line.73"></a>
+<span class="sourceLineNo">074</span>  {<a name="line.74"></a>
+<span class="sourceLineNo">075</span>    MediaList media = ContentStorageReferenceCore.addUrls(authenticatedUser.getUserIdentity(), backendId.getValues(), url.getValues());<a name="line.75"></a>
+<span class="sourceLineNo">076</span>    if(MediaList.isEmpty(media)){<a name="line.76"></a>
+<span class="sourceLineNo">077</span>      return new Response(Status.BAD_REQUEST);<a name="line.77"></a>
+<span class="sourceLineNo">078</span>    }else{<a name="line.78"></a>
+<span class="sourceLineNo">079</span>      return new Response(media);<a name="line.79"></a>
+<span class="sourceLineNo">080</span>    }<a name="line.80"></a>
+<span class="sourceLineNo">081</span>  }<a name="line.81"></a>
+<span class="sourceLineNo">082</span>}<a name="line.82"></a>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</pre>
+</div>
+</body>
+</html>

@@ -1,0 +1,478 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+<head>
+<title>Source code</title>
+<link rel="stylesheet" type="text/css" href="../../../../../../stylesheet.css" title="Style">
+</head>
+<body>
+<div class="sourceContainer">
+<pre><span class="sourceLineNo">001</span>/**<a name="line.1"></a>
+<span class="sourceLineNo">002</span> * Copyright 2014 Tampere University of Technology, Pori Unit<a name="line.2"></a>
+<span class="sourceLineNo">003</span> * <a name="line.3"></a>
+<span class="sourceLineNo">004</span> * Licensed under the Apache License, Version 2.0 (the "License");<a name="line.4"></a>
+<span class="sourceLineNo">005</span> * you may not use this file except in compliance with the License.<a name="line.5"></a>
+<span class="sourceLineNo">006</span> * You may obtain a copy of the License at<a name="line.6"></a>
+<span class="sourceLineNo">007</span> * <a name="line.7"></a>
+<span class="sourceLineNo">008</span> *   http://www.apache.org/licenses/LICENSE-2.0<a name="line.8"></a>
+<span class="sourceLineNo">009</span> * <a name="line.9"></a>
+<span class="sourceLineNo">010</span> * Unless required by applicable law or agreed to in writing, software<a name="line.10"></a>
+<span class="sourceLineNo">011</span> * distributed under the License is distributed on an "AS IS" BASIS,<a name="line.11"></a>
+<span class="sourceLineNo">012</span> * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<a name="line.12"></a>
+<span class="sourceLineNo">013</span> * See the License for the specific language governing permissions and<a name="line.13"></a>
+<span class="sourceLineNo">014</span> * limitations under the License.<a name="line.14"></a>
+<span class="sourceLineNo">015</span> */<a name="line.15"></a>
+<span class="sourceLineNo">016</span>package service.tut.pori.contentanalysis.reference;<a name="line.16"></a>
+<span class="sourceLineNo">017</span><a name="line.17"></a>
+<span class="sourceLineNo">018</span>import java.io.IOException;<a name="line.18"></a>
+<span class="sourceLineNo">019</span>import java.io.InputStream;<a name="line.19"></a>
+<span class="sourceLineNo">020</span><a name="line.20"></a>
+<span class="sourceLineNo">021</span>import org.apache.commons.io.IOUtils;<a name="line.21"></a>
+<span class="sourceLineNo">022</span>import org.apache.log4j.Logger;<a name="line.22"></a>
+<span class="sourceLineNo">023</span><a name="line.23"></a>
+<span class="sourceLineNo">024</span>import service.tut.pori.contentanalysis.PhotoParameters.AnalysisType;<a name="line.24"></a>
+<span class="sourceLineNo">025</span>import service.tut.pori.contentanalysis.CAContentCore.ServiceType;<a name="line.25"></a>
+<span class="sourceLineNo">026</span>import service.tut.pori.contentanalysis.Definitions;<a name="line.26"></a>
+<span class="sourceLineNo">027</span>import service.tut.pori.contentanalysis.PhotoFeedbackList;<a name="line.27"></a>
+<span class="sourceLineNo">028</span>import service.tut.pori.contentanalysis.PhotoList;<a name="line.28"></a>
+<span class="sourceLineNo">029</span>import service.tut.pori.contentanalysis.MediaObjectList;<a name="line.29"></a>
+<span class="sourceLineNo">030</span>import core.tut.pori.http.RedirectResponse;<a name="line.30"></a>
+<span class="sourceLineNo">031</span>import core.tut.pori.http.Response;<a name="line.31"></a>
+<span class="sourceLineNo">032</span>import core.tut.pori.http.annotations.HTTPAuthenticationParameter;<a name="line.32"></a>
+<span class="sourceLineNo">033</span>import core.tut.pori.http.annotations.HTTPMethodParameter;<a name="line.33"></a>
+<span class="sourceLineNo">034</span>import core.tut.pori.http.annotations.HTTPService;<a name="line.34"></a>
+<span class="sourceLineNo">035</span>import core.tut.pori.http.annotations.HTTPServiceMethod;<a name="line.35"></a>
+<span class="sourceLineNo">036</span>import core.tut.pori.http.parameters.AuthenticationParameter;<a name="line.36"></a>
+<span class="sourceLineNo">037</span>import core.tut.pori.http.parameters.DataGroups;<a name="line.37"></a>
+<span class="sourceLineNo">038</span>import core.tut.pori.http.parameters.InputStreamParameter;<a name="line.38"></a>
+<span class="sourceLineNo">039</span>import core.tut.pori.http.parameters.IntegerParameter;<a name="line.39"></a>
+<span class="sourceLineNo">040</span>import core.tut.pori.http.parameters.Limits;<a name="line.40"></a>
+<span class="sourceLineNo">041</span>import core.tut.pori.http.parameters.LongParameter;<a name="line.41"></a>
+<span class="sourceLineNo">042</span>import core.tut.pori.http.parameters.StringParameter;<a name="line.42"></a>
+<span class="sourceLineNo">043</span>import core.tut.pori.utils.XMLFormatter;<a name="line.43"></a>
+<span class="sourceLineNo">044</span><a name="line.44"></a>
+<span class="sourceLineNo">045</span>/**<a name="line.45"></a>
+<span class="sourceLineNo">046</span> * Reference implementation for client API methods.<a name="line.46"></a>
+<span class="sourceLineNo">047</span> * <a name="line.47"></a>
+<span class="sourceLineNo">048</span> * &lt;h1&gt;Implementation Service path {@value service.tut.pori.contentanalysis.Definitions#SERVICE_CA}&lt;/h1&gt;<a name="line.48"></a>
+<span class="sourceLineNo">049</span> * <a name="line.49"></a>
+<span class="sourceLineNo">050</span> * @see service.tut.pori.contentanalysis.ContentAnalysisService<a name="line.50"></a>
+<span class="sourceLineNo">051</span> *<a name="line.51"></a>
+<span class="sourceLineNo">052</span> */<a name="line.52"></a>
+<span class="sourceLineNo">053</span>@HTTPService(name = service.tut.pori.contentanalysis.reference.Definitions.SERVICE_CA_REFERENCE_CLIENT)<a name="line.53"></a>
+<span class="sourceLineNo">054</span>public class ClientService {<a name="line.54"></a>
+<span class="sourceLineNo">055</span>  private static final Logger LOGGER = Logger.getLogger(ClientService.class);<a name="line.55"></a>
+<span class="sourceLineNo">056</span>  private XMLFormatter _formatter = new XMLFormatter();<a name="line.56"></a>
+<span class="sourceLineNo">057</span>  <a name="line.57"></a>
+<span class="sourceLineNo">058</span>  /**<a name="line.58"></a>
+<span class="sourceLineNo">059</span>   * Search for photos which contain the given keywords, or keywords closely related or associated with the keywords. Non-authenticated users only have access to publicly available content.<a name="line.59"></a>
+<span class="sourceLineNo">060</span>   * <a name="line.60"></a>
+<span class="sourceLineNo">061</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.61"></a>
+<span class="sourceLineNo">062</span>   *<a name="line.62"></a>
+<span class="sourceLineNo">063</span>   * GET /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_KEYWORD}?{@value service.tut.pori.contentanalysis.Definitions#PARAMETER_KEYWORDS}=cute&lt;br&gt;<a name="line.63"></a>
+<span class="sourceLineNo">064</span>   *<a name="line.64"></a>
+<span class="sourceLineNo">065</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.65"></a>
+<span class="sourceLineNo">066</span>   * <a name="line.66"></a>
+<span class="sourceLineNo">067</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_KEYWORD]" type="GET" query="[service.tut.pori.contentanalysis.Definitions#PARAMETER_KEYWORDS]=cute" body_uri=""}<a name="line.67"></a>
+<span class="sourceLineNo">068</span>   * <a name="line.68"></a>
+<span class="sourceLineNo">069</span>   * @param authenticatedUser<a name="line.69"></a>
+<span class="sourceLineNo">070</span>   * @param keywords any number of keywords for the search. <a name="line.70"></a>
+<span class="sourceLineNo">071</span>   * @param dataGroups For supported data groups, see {@link #retrieveMediaObjects(AuthenticationParameter, DataGroups, Limits, IntegerParameter, StringParameter)}<a name="line.71"></a>
+<span class="sourceLineNo">072</span>   * @param limits paging limits<a name="line.72"></a>
+<span class="sourceLineNo">073</span>   * @param serviceIds If given, search is targeted only to the services with the listed ids. For supported service types, see {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}.<a name="line.73"></a>
+<span class="sourceLineNo">074</span>   * @param userIdFilters If given, the search will return photos owned by the given user (provided that the currently logged in user has the required permissions).<a name="line.74"></a>
+<span class="sourceLineNo">075</span>   * @return See {@link service.tut.pori.contentanalysis.PhotoList}<a name="line.75"></a>
+<span class="sourceLineNo">076</span>   */<a name="line.76"></a>
+<span class="sourceLineNo">077</span>  @HTTPServiceMethod(name = Definitions.METHOD_SEARCH_SIMILAR_BY_KEYWORD, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.77"></a>
+<span class="sourceLineNo">078</span>  public Response searchSimilarByKeyword(<a name="line.78"></a>
+<span class="sourceLineNo">079</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.79"></a>
+<span class="sourceLineNo">080</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_KEYWORDS) StringParameter keywords, <a name="line.80"></a>
+<span class="sourceLineNo">081</span>      @HTTPMethodParameter(name = DataGroups.PARAMETER_DEFAULT_NAME, required = false) DataGroups dataGroups,<a name="line.81"></a>
+<span class="sourceLineNo">082</span>      @HTTPMethodParameter(name = Limits.PARAMETER_DEFAULT_NAME, required = false) Limits limits,<a name="line.82"></a>
+<span class="sourceLineNo">083</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SERVICE_ID, required = false) IntegerParameter serviceIds,<a name="line.83"></a>
+<span class="sourceLineNo">084</span>      @HTTPMethodParameter(name = service.tut.pori.users.Definitions.PARAMETER_USER_ID, required = false) LongParameter userIdFilters<a name="line.84"></a>
+<span class="sourceLineNo">085</span>      ) <a name="line.85"></a>
+<span class="sourceLineNo">086</span>  {<a name="line.86"></a>
+<span class="sourceLineNo">087</span>    return CAReferenceCore.searchByKeyword(authenticatedUser.getUserIdentity(), keywords.getValues(), dataGroups, limits, ServiceType.fromIdArray(serviceIds.getValues()), userIdFilters.getValues());<a name="line.87"></a>
+<span class="sourceLineNo">088</span>  }<a name="line.88"></a>
+<span class="sourceLineNo">089</span>  <a name="line.89"></a>
+<span class="sourceLineNo">090</span>  /**<a name="line.90"></a>
+<span class="sourceLineNo">091</span>   * Search for photos which are similar to the photo designated by the given GUID parameter. Non-authenticated users only have access to publicly available content.<a name="line.91"></a>
+<span class="sourceLineNo">092</span>   * <a name="line.92"></a>
+<span class="sourceLineNo">093</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.93"></a>
+<span class="sourceLineNo">094</span>   *<a name="line.94"></a>
+<span class="sourceLineNo">095</span>   * GET /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_ID}?{@value service.tut.pori.contentanalysis.Definitions#PARAMETER_GUID}=1&lt;br&gt;<a name="line.95"></a>
+<span class="sourceLineNo">096</span>   *<a name="line.96"></a>
+<span class="sourceLineNo">097</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.97"></a>
+<span class="sourceLineNo">098</span>   * <a name="line.98"></a>
+<span class="sourceLineNo">099</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_ID]" type="GET" query="[service.tut.pori.contentanalysis.Definitions#PARAMETER_GUID]=1" body_uri=""}<a name="line.99"></a>
+<span class="sourceLineNo">100</span>   * <a name="line.100"></a>
+<span class="sourceLineNo">101</span>   * @param authenticatedUser<a name="line.101"></a>
+<span class="sourceLineNo">102</span>   * @param analysisType optional list of analysis types to use for the search operation {@link service.tut.pori.contentanalysis.PhotoParameters.AnalysisType}<a name="line.102"></a>
+<span class="sourceLineNo">103</span>   * @param guid photo GUID<a name="line.103"></a>
+<span class="sourceLineNo">104</span>   * @param dataGroups For supported data groups, see {@link #retrieveMediaObjects(AuthenticationParameter, DataGroups, Limits, IntegerParameter, StringParameter)}<a name="line.104"></a>
+<span class="sourceLineNo">105</span>   * @param limits paging limits<a name="line.105"></a>
+<span class="sourceLineNo">106</span>   * @param serviceIds If given, search is targeted only to the services with the listed ids. For supported service types, see {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}.<a name="line.106"></a>
+<span class="sourceLineNo">107</span>   * @param userIdFilters If given, the search will return photos owned by the given user (provided that the currently logged in user has the required permissions).<a name="line.107"></a>
+<span class="sourceLineNo">108</span>   * @return See {@link service.tut.pori.contentanalysis.PhotoList}<a name="line.108"></a>
+<span class="sourceLineNo">109</span>   */<a name="line.109"></a>
+<span class="sourceLineNo">110</span>  @HTTPServiceMethod(name = Definitions.METHOD_SEARCH_SIMILAR_BY_ID, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.110"></a>
+<span class="sourceLineNo">111</span>  public Response searchSimilarById(<a name="line.111"></a>
+<span class="sourceLineNo">112</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.112"></a>
+<span class="sourceLineNo">113</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_GUID) StringParameter guid, <a name="line.113"></a>
+<span class="sourceLineNo">114</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_ANALYSIS_TYPE, required = false) StringParameter analysisType,<a name="line.114"></a>
+<span class="sourceLineNo">115</span>      @HTTPMethodParameter(name = DataGroups.PARAMETER_DEFAULT_NAME, required = false) DataGroups dataGroups,<a name="line.115"></a>
+<span class="sourceLineNo">116</span>      @HTTPMethodParameter(name = Limits.PARAMETER_DEFAULT_NAME, required = false) Limits limits,<a name="line.116"></a>
+<span class="sourceLineNo">117</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SERVICE_ID, required = false) IntegerParameter serviceIds,<a name="line.117"></a>
+<span class="sourceLineNo">118</span>      @HTTPMethodParameter(name = service.tut.pori.users.Definitions.PARAMETER_USER_ID, required = false) LongParameter userIdFilters<a name="line.118"></a>
+<span class="sourceLineNo">119</span>      ) <a name="line.119"></a>
+<span class="sourceLineNo">120</span>  {<a name="line.120"></a>
+<span class="sourceLineNo">121</span>    return CAReferenceCore.searchSimilarById(authenticatedUser.getUserIdentity(), AnalysisType.fromAnalysisTypeString(analysisType.getValues()), guid.getValue(), dataGroups, limits, ServiceType.fromIdArray(serviceIds.getValues()), userIdFilters.getValues());<a name="line.121"></a>
+<span class="sourceLineNo">122</span>  }<a name="line.122"></a>
+<span class="sourceLineNo">123</span>  <a name="line.123"></a>
+<span class="sourceLineNo">124</span>  /**<a name="line.124"></a>
+<span class="sourceLineNo">125</span>   * Search similar photos by giving a list of reference objects. All elements applicable to media objects are accepted as restrictive search terms. Note that missing elements (and element values) are assumed not to be included in the search, except "status" field, which is automatically assumed to be "USER_CONFIRMED" when no value is specified. The Media Object list is to be sent in the body of POST method. The Content-Type header MUST be set to "text/xml". The character set MUST be UTF-8. For example, "Content-Type: text/xml; charset=UTF-8".<a name="line.125"></a>
+<span class="sourceLineNo">126</span>   * <a name="line.126"></a>
+<span class="sourceLineNo">127</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.127"></a>
+<span class="sourceLineNo">128</span>   * <a name="line.128"></a>
+<span class="sourceLineNo">129</span>   * POST /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_OBJECT}&lt;br&gt;<a name="line.129"></a>
+<span class="sourceLineNo">130</span>   * Content-Type: text/xml; charset=UTF-8&lt;br&gt;&lt;br&gt;<a name="line.130"></a>
+<span class="sourceLineNo">131</span>   *<a name="line.131"></a>
+<span class="sourceLineNo">132</span>   * &lt;b&gt;[HTTP BODY STARTS]&lt;/b&gt;&lt;br&gt;<a name="line.132"></a>
+<span class="sourceLineNo">133</span>   * <a name="line.133"></a>
+<span class="sourceLineNo">134</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_EXAMPLE]" method="[service.tut.pori.contentanalysis.Definitions#ELEMENT_MEDIA_OBJECTLIST]" type="GET" query="" body_uri=""} &lt;br&gt;<a name="line.134"></a>
+<span class="sourceLineNo">135</span>   * <a name="line.135"></a>
+<span class="sourceLineNo">136</span>   * &lt;b&gt;[HTTP BODY ENDS]&lt;/b&gt;&lt;br&gt;<a name="line.136"></a>
+<span class="sourceLineNo">137</span>   *<a name="line.137"></a>
+<span class="sourceLineNo">138</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.138"></a>
+<span class="sourceLineNo">139</span>   * <a name="line.139"></a>
+<span class="sourceLineNo">140</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_OBJECT]" type="POST" query="" body_uri="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_EXAMPLE]/[service.tut.pori.contentanalysis.Definitions#ELEMENT_MEDIA_OBJECTLIST]"}<a name="line.140"></a>
+<span class="sourceLineNo">141</span>   * <a name="line.141"></a>
+<span class="sourceLineNo">142</span>   * @param authenticatedUser<a name="line.142"></a>
+<span class="sourceLineNo">143</span>   * @param dataGroups For supported data groups, see {@link #retrieveMediaObjects(AuthenticationParameter, DataGroups, Limits, IntegerParameter, StringParameter)}<a name="line.143"></a>
+<span class="sourceLineNo">144</span>   * @param limits paging limits<a name="line.144"></a>
+<span class="sourceLineNo">145</span>   * @param serviceIds If given, search is targeted only to the services with the listed ids. For supported service types, see {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}.<a name="line.145"></a>
+<span class="sourceLineNo">146</span>   * @param userIdFilters If given, the search will return photos owned by the given user (provided that the currently logged in user has the required permissions).<a name="line.146"></a>
+<span class="sourceLineNo">147</span>   * @param xml See {@link service.tut.pori.contentanalysis.MediaObjectList}<a name="line.147"></a>
+<span class="sourceLineNo">148</span>   * @return See {@link service.tut.pori.contentanalysis.PhotoList}<a name="line.148"></a>
+<span class="sourceLineNo">149</span>   */<a name="line.149"></a>
+<span class="sourceLineNo">150</span>  @HTTPServiceMethod(name = Definitions.METHOD_SEARCH_SIMILAR_BY_OBJECT, acceptedMethods={core.tut.pori.http.Definitions.METHOD_POST})<a name="line.150"></a>
+<span class="sourceLineNo">151</span>  public Response similarPhotosByObject(<a name="line.151"></a>
+<span class="sourceLineNo">152</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.152"></a>
+<span class="sourceLineNo">153</span>      @HTTPMethodParameter(name = DataGroups.PARAMETER_DEFAULT_NAME, required = false) DataGroups dataGroups,<a name="line.153"></a>
+<span class="sourceLineNo">154</span>      @HTTPMethodParameter(name = Limits.PARAMETER_DEFAULT_NAME, required = false) Limits limits,<a name="line.154"></a>
+<span class="sourceLineNo">155</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SERVICE_ID, required = false) IntegerParameter serviceIds,<a name="line.155"></a>
+<span class="sourceLineNo">156</span>      @HTTPMethodParameter(name = service.tut.pori.users.Definitions.PARAMETER_USER_ID, required = false) LongParameter userIdFilters,<a name="line.156"></a>
+<span class="sourceLineNo">157</span>      @HTTPMethodParameter(name = InputStreamParameter.PARAMETER_DEFAULT_NAME, bodyParameter = true) InputStreamParameter xml<a name="line.157"></a>
+<span class="sourceLineNo">158</span>      )<a name="line.158"></a>
+<span class="sourceLineNo">159</span>  {<a name="line.159"></a>
+<span class="sourceLineNo">160</span>    try {<a name="line.160"></a>
+<span class="sourceLineNo">161</span>      String body = IOUtils.toString(xml.getValue()); // read the body<a name="line.161"></a>
+<span class="sourceLineNo">162</span>      LOGGER.debug(body); // print to debug<a name="line.162"></a>
+<span class="sourceLineNo">163</span>      try(InputStream input = IOUtils.toInputStream(body)){ // convert back to stream for unmarshal<a name="line.163"></a>
+<span class="sourceLineNo">164</span>        return CAReferenceCore.similarPhotosByObject(authenticatedUser.getUserIdentity(), _formatter.toObject(input, MediaObjectList.class), dataGroups, limits, ServiceType.fromIdArray(serviceIds.getValues()), userIdFilters.getValues());<a name="line.164"></a>
+<span class="sourceLineNo">165</span>      }<a name="line.165"></a>
+<span class="sourceLineNo">166</span>    } catch (IOException ex) {<a name="line.166"></a>
+<span class="sourceLineNo">167</span>      LOGGER.error(ex, ex);<a name="line.167"></a>
+<span class="sourceLineNo">168</span>      return null;<a name="line.168"></a>
+<span class="sourceLineNo">169</span>    }<a name="line.169"></a>
+<span class="sourceLineNo">170</span>  }<a name="line.170"></a>
+<span class="sourceLineNo">171</span>  <a name="line.171"></a>
+<span class="sourceLineNo">172</span>  /**<a name="line.172"></a>
+<span class="sourceLineNo">173</span>   * Search for photos which are similar to the photo designated by the given URL parameter. Non-authenticated users only have access to publicly available content.<a name="line.173"></a>
+<span class="sourceLineNo">174</span>   * <a name="line.174"></a>
+<span class="sourceLineNo">175</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.175"></a>
+<span class="sourceLineNo">176</span>   *<a name="line.176"></a>
+<span class="sourceLineNo">177</span>   * GET /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_CONTENT}?{@value service.tut.pori.contentanalysis.Definitions#PARAMETER_URL}=http%3A%2F%2Fexample.org%2Fimage.jpg&lt;br&gt;<a name="line.177"></a>
+<span class="sourceLineNo">178</span>   *<a name="line.178"></a>
+<span class="sourceLineNo">179</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.179"></a>
+<span class="sourceLineNo">180</span>   * <a name="line.180"></a>
+<span class="sourceLineNo">181</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_SEARCH_SIMILAR_BY_CONTENT]" type="GET" query="[service.tut.pori.contentanalysis.Definitions#PARAMETER_URL]=http%3A%2F%2Fexample.org%2Fimage.jpg" body_uri=""}<a name="line.181"></a>
+<span class="sourceLineNo">182</span>   * <a name="line.182"></a>
+<span class="sourceLineNo">183</span>   * @param authenticatedUser<a name="line.183"></a>
+<span class="sourceLineNo">184</span>   * @param url publicly accessible URL with photo content<a name="line.184"></a>
+<span class="sourceLineNo">185</span>   * @param analysisType optional list of analysis types to use for the search operation {@link service.tut.pori.contentanalysis.PhotoParameters.AnalysisType}<a name="line.185"></a>
+<span class="sourceLineNo">186</span>   * @param dataGroups For supported data groups, see {@link #retrieveMediaObjects(AuthenticationParameter, DataGroups, Limits, IntegerParameter, StringParameter)}<a name="line.186"></a>
+<span class="sourceLineNo">187</span>   * @param limits paging limits<a name="line.187"></a>
+<span class="sourceLineNo">188</span>   * @param serviceIds If given, search is targeted only to the services with the listed ids. For supported service types, see {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}.<a name="line.188"></a>
+<span class="sourceLineNo">189</span>   * @param userIdFilters If given, the search will return photos owned by the given user (provided that the currently logged in user has the required permissions).<a name="line.189"></a>
+<span class="sourceLineNo">190</span>   * @return See {@link service.tut.pori.contentanalysis.PhotoList}<a name="line.190"></a>
+<span class="sourceLineNo">191</span>   */<a name="line.191"></a>
+<span class="sourceLineNo">192</span>  @HTTPServiceMethod(name = Definitions.METHOD_SEARCH_SIMILAR_BY_CONTENT, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.192"></a>
+<span class="sourceLineNo">193</span>  public Response searchSimilarByContent(<a name="line.193"></a>
+<span class="sourceLineNo">194</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.194"></a>
+<span class="sourceLineNo">195</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_URL) StringParameter url, <a name="line.195"></a>
+<span class="sourceLineNo">196</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_ANALYSIS_TYPE, required = false) StringParameter analysisType, <a name="line.196"></a>
+<span class="sourceLineNo">197</span>      @HTTPMethodParameter(name = DataGroups.PARAMETER_DEFAULT_NAME, required = false) DataGroups dataGroups, <a name="line.197"></a>
+<span class="sourceLineNo">198</span>      @HTTPMethodParameter(name = Limits.PARAMETER_DEFAULT_NAME, required = false) Limits limits,<a name="line.198"></a>
+<span class="sourceLineNo">199</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SERVICE_ID, required = false) IntegerParameter serviceIds, <a name="line.199"></a>
+<span class="sourceLineNo">200</span>      @HTTPMethodParameter(name = service.tut.pori.users.Definitions.PARAMETER_USER_ID, required = false) LongParameter userIdFilters<a name="line.200"></a>
+<span class="sourceLineNo">201</span>      ) <a name="line.201"></a>
+<span class="sourceLineNo">202</span>  {  <a name="line.202"></a>
+<span class="sourceLineNo">203</span>    return CAReferenceCore.searchByContent(authenticatedUser.getUserIdentity(), AnalysisType.fromAnalysisTypeString(analysisType.getValues()), url.getValue(), dataGroups, limits, ServiceType.fromIdArray(serviceIds.getValues()), userIdFilters.getValues());<a name="line.203"></a>
+<span class="sourceLineNo">204</span>  }<a name="line.204"></a>
+<span class="sourceLineNo">205</span>  <a name="line.205"></a>
+<span class="sourceLineNo">206</span>  /**<a name="line.206"></a>
+<span class="sourceLineNo">207</span>   * Redirects the client to the actual photo location (i.e. redirects calls targeted to static front-end URLs to dynamic service specific URLs).<a name="line.207"></a>
+<span class="sourceLineNo">208</span>   * The redirection method takes GUID and service id as a parameter. The redirection URLs are automatically generated for analysis tasks and user's search results by the front-end.<a name="line.208"></a>
+<span class="sourceLineNo">209</span>   * <a name="line.209"></a>
+<span class="sourceLineNo">210</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.210"></a>
+<span class="sourceLineNo">211</span>   *<a name="line.211"></a>
+<span class="sourceLineNo">212</span>   * GET /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_REDIRECT}?{@value service.tut.pori.contentanalysis.Definitions#PARAMETER_GUID}=1&amp;amp;{@value service.tut.pori.contentanalysis.Definitions#PARAMETER_SERVICE_ID}=1<a name="line.212"></a>
+<span class="sourceLineNo">213</span>   *<a name="line.213"></a>
+<span class="sourceLineNo">214</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.214"></a>
+<span class="sourceLineNo">215</span>   * <a name="line.215"></a>
+<span class="sourceLineNo">216</span>   * REDIRECT / PHOTO CONTENT<a name="line.216"></a>
+<span class="sourceLineNo">217</span>   * <a name="line.217"></a>
+<span class="sourceLineNo">218</span>   * @param authenticatedUser<a name="line.218"></a>
+<span class="sourceLineNo">219</span>   * @param serviceId One of the supported service types, see {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}.<a name="line.219"></a>
+<span class="sourceLineNo">220</span>   * @param guid photo GUID<a name="line.220"></a>
+<span class="sourceLineNo">221</span>   * @return redirection<a name="line.221"></a>
+<span class="sourceLineNo">222</span>   */<a name="line.222"></a>
+<span class="sourceLineNo">223</span>  @HTTPServiceMethod(name = Definitions.METHOD_REDIRECT, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.223"></a>
+<span class="sourceLineNo">224</span>  public RedirectResponse r(<a name="line.224"></a>
+<span class="sourceLineNo">225</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.225"></a>
+<span class="sourceLineNo">226</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SERVICE_ID) IntegerParameter serviceId,<a name="line.226"></a>
+<span class="sourceLineNo">227</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_GUID) StringParameter guid<a name="line.227"></a>
+<span class="sourceLineNo">228</span>      )<a name="line.228"></a>
+<span class="sourceLineNo">229</span>  {<a name="line.229"></a>
+<span class="sourceLineNo">230</span>    return CAReferenceCore.generateTargetUrl(authenticatedUser.getUserIdentity(), ServiceType.fromServiceId(serviceId.getValue()), guid.getValue());<a name="line.230"></a>
+<span class="sourceLineNo">231</span>  }<a name="line.231"></a>
+<span class="sourceLineNo">232</span>  <a name="line.232"></a>
+<span class="sourceLineNo">233</span>  /**<a name="line.233"></a>
+<span class="sourceLineNo">234</span>   * The clients can use this method to update the details of photos. If media objects are updated, calling this method may trigger the generation of feedback task. <a name="line.234"></a>
+<span class="sourceLineNo">235</span>   * The request is to be sent in the body of POST method. The Content-Type header MUST be set to "text/xml". The character set MUST be UTF-8. For example, "Content-Type: text/xml; charset=UTF-8".<a name="line.235"></a>
+<span class="sourceLineNo">236</span>   * <a name="line.236"></a>
+<span class="sourceLineNo">237</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.237"></a>
+<span class="sourceLineNo">238</span>   *<a name="line.238"></a>
+<span class="sourceLineNo">239</span>   * POST /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_UPDATE_PHOTO_METADATA}&lt;br&gt;<a name="line.239"></a>
+<span class="sourceLineNo">240</span>   * Content-Type: text/xml; charset=UTF-8&lt;br&gt;&lt;br&gt;<a name="line.240"></a>
+<span class="sourceLineNo">241</span>   *<a name="line.241"></a>
+<span class="sourceLineNo">242</span>   * &lt;b&gt;[HTTP BODY STARTS]&lt;/b&gt;&lt;br&gt;<a name="line.242"></a>
+<span class="sourceLineNo">243</span>   * <a name="line.243"></a>
+<span class="sourceLineNo">244</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_EXAMPLE]" method="[service.tut.pori.contentanalysis.Definitions#ELEMENT_PHOTOLIST]" type="GET" query="" body_uri=""} &lt;br&gt;<a name="line.244"></a>
+<span class="sourceLineNo">245</span>   * <a name="line.245"></a>
+<span class="sourceLineNo">246</span>   * &lt;b&gt;[HTTP BODY ENDS]&lt;/b&gt;&lt;br&gt;<a name="line.246"></a>
+<span class="sourceLineNo">247</span>   *<a name="line.247"></a>
+<span class="sourceLineNo">248</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.248"></a>
+<span class="sourceLineNo">249</span>   * <a name="line.249"></a>
+<span class="sourceLineNo">250</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_UPDATE_PHOTO_METADATA]" type="POST" query="" body_uri="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_EXAMPLE]/[service.tut.pori.contentanalysis.Definitions#ELEMENT_PHOTOLIST]"}<a name="line.250"></a>
+<span class="sourceLineNo">251</span>   * <a name="line.251"></a>
+<span class="sourceLineNo">252</span>   * @param authenticatedUser Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.252"></a>
+<span class="sourceLineNo">253</span>   * @param xml Only the result data should be in the body. See {@link service.tut.pori.contentanalysis.PhotoList}<a name="line.253"></a>
+<span class="sourceLineNo">254</span>   */<a name="line.254"></a>
+<span class="sourceLineNo">255</span>  @HTTPServiceMethod(name = Definitions.METHOD_UPDATE_PHOTO_METADATA, acceptedMethods={core.tut.pori.http.Definitions.METHOD_POST})<a name="line.255"></a>
+<span class="sourceLineNo">256</span>  public void updatePhotos(<a name="line.256"></a>
+<span class="sourceLineNo">257</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser, // in the real implementation this is required<a name="line.257"></a>
+<span class="sourceLineNo">258</span>      @HTTPMethodParameter(name=InputStreamParameter.PARAMETER_DEFAULT_NAME, bodyParameter=true) InputStreamParameter xml<a name="line.258"></a>
+<span class="sourceLineNo">259</span>      )<a name="line.259"></a>
+<span class="sourceLineNo">260</span>  {<a name="line.260"></a>
+<span class="sourceLineNo">261</span>    try {<a name="line.261"></a>
+<span class="sourceLineNo">262</span>      String body = IOUtils.toString(xml.getValue()); // read the body<a name="line.262"></a>
+<span class="sourceLineNo">263</span>      LOGGER.debug(body); // print to debug<a name="line.263"></a>
+<span class="sourceLineNo">264</span>      try(InputStream input = IOUtils.toInputStream(body)){ // convert back to stream for unmarshal<a name="line.264"></a>
+<span class="sourceLineNo">265</span>        CAReferenceCore.updatePhotos(authenticatedUser.getUserIdentity(), _formatter.toObject(input, PhotoList.class));<a name="line.265"></a>
+<span class="sourceLineNo">266</span>      }<a name="line.266"></a>
+<span class="sourceLineNo">267</span>    } catch (IOException ex) {<a name="line.267"></a>
+<span class="sourceLineNo">268</span>      LOGGER.error(ex, ex);<a name="line.268"></a>
+<span class="sourceLineNo">269</span>    }<a name="line.269"></a>
+<span class="sourceLineNo">270</span>  }<a name="line.270"></a>
+<span class="sourceLineNo">271</span>  <a name="line.271"></a>
+<span class="sourceLineNo">272</span>  /**<a name="line.272"></a>
+<span class="sourceLineNo">273</span>   * This method can be used to retrieve the metadata of one or multiple photos. Any combination of parameters may be given for retrieving only the desired content (filtering the results). If you only want a list of media objects, this can be done with Retrieve media Objects method. If the user is not authenticated, access is only permitted to publicly available content.<a name="line.273"></a>
+<span class="sourceLineNo">274</span>   *<a name="line.274"></a>
+<span class="sourceLineNo">275</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.275"></a>
+<span class="sourceLineNo">276</span>   *<a name="line.276"></a>
+<span class="sourceLineNo">277</span>   * GET /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_RETRIEVE_PHOTO_METADATA}&lt;br&gt;<a name="line.277"></a>
+<span class="sourceLineNo">278</span>   *<a name="line.278"></a>
+<span class="sourceLineNo">279</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.279"></a>
+<span class="sourceLineNo">280</span>   * <a name="line.280"></a>
+<span class="sourceLineNo">281</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_RETRIEVE_PHOTO_METADATA]" type="GET" query="" body_uri=""}<a name="line.281"></a>
+<span class="sourceLineNo">282</span>   * <a name="line.282"></a>
+<span class="sourceLineNo">283</span>   * @param authenticatedUser<a name="line.283"></a>
+<span class="sourceLineNo">284</span>   * @param guid One or more photo GUIDs for retrieval.<a name="line.284"></a>
+<span class="sourceLineNo">285</span>   * @param dataGroups dataGroups For supported data groups, see {@link #retrieveMediaObjects(AuthenticationParameter, DataGroups, Limits, IntegerParameter, StringParameter)}<a name="line.285"></a>
+<span class="sourceLineNo">286</span>   * @param limits paing limits<a name="line.286"></a>
+<span class="sourceLineNo">287</span>   * @param serviceIds If given, only photos from the given services will be returned. For supported service types, see {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}.<a name="line.287"></a>
+<span class="sourceLineNo">288</span>   * @param userIds If given, the search will return photos owned by the given user (provided that the currently logged in user has the required permissions).<a name="line.288"></a>
+<span class="sourceLineNo">289</span>   * @return See {@link service.tut.pori.contentanalysis.PhotoList}<a name="line.289"></a>
+<span class="sourceLineNo">290</span>   */<a name="line.290"></a>
+<span class="sourceLineNo">291</span>  @HTTPServiceMethod(name = Definitions.METHOD_RETRIEVE_PHOTO_METADATA, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.291"></a>
+<span class="sourceLineNo">292</span>  public Response getPhotos(<a name="line.292"></a>
+<span class="sourceLineNo">293</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.293"></a>
+<span class="sourceLineNo">294</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_GUID, required=false) StringParameter guid,<a name="line.294"></a>
+<span class="sourceLineNo">295</span>      @HTTPMethodParameter(name = DataGroups.PARAMETER_DEFAULT_NAME, required = false) DataGroups dataGroups,<a name="line.295"></a>
+<span class="sourceLineNo">296</span>      @HTTPMethodParameter(name = Limits.PARAMETER_DEFAULT_NAME, required = false) Limits limits,<a name="line.296"></a>
+<span class="sourceLineNo">297</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SERVICE_ID, required = false) IntegerParameter serviceIds,<a name="line.297"></a>
+<span class="sourceLineNo">298</span>      @HTTPMethodParameter(name = service.tut.pori.users.Definitions.PARAMETER_USER_ID, required = false) LongParameter userIds<a name="line.298"></a>
+<span class="sourceLineNo">299</span>      )<a name="line.299"></a>
+<span class="sourceLineNo">300</span>  {<a name="line.300"></a>
+<span class="sourceLineNo">301</span>    return CAReferenceCore.getPhotos(authenticatedUser.getUserIdentity(), guid.getValues(), dataGroups, limits, ServiceType.fromIdArray(serviceIds.getValues()), userIds.getValues());<a name="line.301"></a>
+<span class="sourceLineNo">302</span>  }<a name="line.302"></a>
+<span class="sourceLineNo">303</span>  <a name="line.303"></a>
+<span class="sourceLineNo">304</span>  /**<a name="line.304"></a>
+<span class="sourceLineNo">305</span>   * <a name="line.305"></a>
+<span class="sourceLineNo">306</span>   * The clients can use this method to deliver similarity feedback. An example case would be to notify the front-end that the results returned by a search query contain invalid results. Calling this method will trigger the generation of a feedback task.<a name="line.306"></a>
+<span class="sourceLineNo">307</span>   * <a name="line.307"></a>
+<span class="sourceLineNo">308</span>   * The request must always contain a Photo List element, which contains at least one Photo for a reference, and a Similar Photo List and/or a Dissimilar Photo List element. The photo(s) in Dissimilar and Similar Photo Lists are thus similar or not similar with the passed reference photo, respectively.<a name="line.308"></a>
+<span class="sourceLineNo">309</span>   * <a name="line.309"></a>
+<span class="sourceLineNo">310</span>   * The request is to be sent in the body of POST method. The Content-Type header MUST be set to "text/xml". The character set MUST be UTF-8. For example, "Content-Type: text/xml; charset=UTF-8".<a name="line.310"></a>
+<span class="sourceLineNo">311</span>   * <a name="line.311"></a>
+<span class="sourceLineNo">312</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.312"></a>
+<span class="sourceLineNo">313</span>   *<a name="line.313"></a>
+<span class="sourceLineNo">314</span>   * POST /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_SIMILARITY_FEEDBACK}&lt;br&gt;<a name="line.314"></a>
+<span class="sourceLineNo">315</span>   * Content-Type: text/xml; charset=UTF-8&lt;br&gt;&lt;br&gt;<a name="line.315"></a>
+<span class="sourceLineNo">316</span>   *<a name="line.316"></a>
+<span class="sourceLineNo">317</span>   * &lt;b&gt;[HTTP BODY STARTS]&lt;/b&gt;&lt;br&gt;<a name="line.317"></a>
+<span class="sourceLineNo">318</span>   * <a name="line.318"></a>
+<span class="sourceLineNo">319</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_EXAMPLE]" method="[service.tut.pori.contentanalysis.Definitions#ELEMENT_FEEDBACKLIST]" type="GET" query="" body_uri=""} &lt;br&gt;<a name="line.319"></a>
+<span class="sourceLineNo">320</span>   * <a name="line.320"></a>
+<span class="sourceLineNo">321</span>   * &lt;b&gt;[HTTP BODY ENDS]&lt;/b&gt;&lt;br&gt;<a name="line.321"></a>
+<span class="sourceLineNo">322</span>   *<a name="line.322"></a>
+<span class="sourceLineNo">323</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.323"></a>
+<span class="sourceLineNo">324</span>   * <a name="line.324"></a>
+<span class="sourceLineNo">325</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_SIMILARITY_FEEDBACK]" type="POST" query="" body_uri="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_EXAMPLE]/[service.tut.pori.contentanalysis.Definitions#ELEMENT_FEEDBACKLIST]"}<a name="line.325"></a>
+<span class="sourceLineNo">326</span>   * <a name="line.326"></a>
+<span class="sourceLineNo">327</span>   * @param authenticatedUser Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.327"></a>
+<span class="sourceLineNo">328</span>   * @param xml Only the result data should be in the body. See {@link service.tut.pori.contentanalysis.PhotoFeedbackList}<a name="line.328"></a>
+<span class="sourceLineNo">329</span>   */<a name="line.329"></a>
+<span class="sourceLineNo">330</span>  @HTTPServiceMethod(name = Definitions.METHOD_SIMILARITY_FEEDBACK, acceptedMethods={core.tut.pori.http.Definitions.METHOD_POST})<a name="line.330"></a>
+<span class="sourceLineNo">331</span>  public void similarityFeedback(<a name="line.331"></a>
+<span class="sourceLineNo">332</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.332"></a>
+<span class="sourceLineNo">333</span>      @HTTPMethodParameter(name = InputStreamParameter.PARAMETER_DEFAULT_NAME, bodyParameter = true) InputStreamParameter xml<a name="line.333"></a>
+<span class="sourceLineNo">334</span>      )<a name="line.334"></a>
+<span class="sourceLineNo">335</span>  {<a name="line.335"></a>
+<span class="sourceLineNo">336</span>    try {<a name="line.336"></a>
+<span class="sourceLineNo">337</span>      String body = IOUtils.toString(xml.getValue()); // read the body<a name="line.337"></a>
+<span class="sourceLineNo">338</span>      LOGGER.debug(body); // print to debug<a name="line.338"></a>
+<span class="sourceLineNo">339</span>      try(InputStream input = IOUtils.toInputStream(body)){ // convert back to stream for unmarshal<a name="line.339"></a>
+<span class="sourceLineNo">340</span>        CAReferenceCore.similarityFeedback(authenticatedUser.getUserIdentity(), _formatter.toObject(input, PhotoFeedbackList.class));<a name="line.340"></a>
+<span class="sourceLineNo">341</span>      }<a name="line.341"></a>
+<span class="sourceLineNo">342</span>    } catch (IOException ex) {<a name="line.342"></a>
+<span class="sourceLineNo">343</span>      LOGGER.error(ex, ex);<a name="line.343"></a>
+<span class="sourceLineNo">344</span>    }<a name="line.344"></a>
+<span class="sourceLineNo">345</span>  }<a name="line.345"></a>
+<span class="sourceLineNo">346</span>  <a name="line.346"></a>
+<span class="sourceLineNo">347</span>  /**<a name="line.347"></a>
+<span class="sourceLineNo">348</span>   * This method is for retrieving a list of media objects for the currently authenticated user by providing a set of request parameters (filters). If you want to retrieve media objects for a single photo, or for a list of photos, it can be done by using the Retrieve Photo Metadata method.<a name="line.348"></a>
+<span class="sourceLineNo">349</span>   * <a name="line.349"></a>
+<span class="sourceLineNo">350</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.350"></a>
+<span class="sourceLineNo">351</span>   *<a name="line.351"></a>
+<span class="sourceLineNo">352</span>   * GET /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_RETRIEVE_MEDIA_OBJECTS}&lt;br&gt;<a name="line.352"></a>
+<span class="sourceLineNo">353</span>   *<a name="line.353"></a>
+<span class="sourceLineNo">354</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.354"></a>
+<span class="sourceLineNo">355</span>   * <a name="line.355"></a>
+<span class="sourceLineNo">356</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_RETRIEVE_MEDIA_OBJECTS]" type="GET" query="" body_uri=""}<a name="line.356"></a>
+<span class="sourceLineNo">357</span>   * <a name="line.357"></a>
+<span class="sourceLineNo">358</span>   * @param authenticatedUser Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.358"></a>
+<span class="sourceLineNo">359</span>   * @param dataGroups In addition to basic data groups the following groups are also supported: {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_TIMECODES}, {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_FACE}, {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_KEYWORDS}, {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_METADATA}, {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_OBJECT}, {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_BACKEND_REMOVED}, {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_CANDIDATE}, {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_USER_CONFIRMED} and {@value service.tut.pori.contentanalysis.Definitions#DATA_GROUP_USER_REJECTED}.<a name="line.359"></a>
+<span class="sourceLineNo">360</span>   * @param limits paging limits<a name="line.360"></a>
+<span class="sourceLineNo">361</span>   * @param serviceIds Return only objects retrieved from specific service(s). For supported service types, see {@link service.tut.pori.contentanalysis.CAContentCore.ServiceType}.<a name="line.361"></a>
+<span class="sourceLineNo">362</span>   * @param mediaObjectIds Return only objects with the specified ids.<a name="line.362"></a>
+<span class="sourceLineNo">363</span>   * @return See {@link service.tut.pori.contentanalysis.MediaObjectList}<a name="line.363"></a>
+<span class="sourceLineNo">364</span>   */<a name="line.364"></a>
+<span class="sourceLineNo">365</span>  @HTTPServiceMethod(name = Definitions.METHOD_RETRIEVE_MEDIA_OBJECTS, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.365"></a>
+<span class="sourceLineNo">366</span>  public Response retrieveMediaObjects(<a name="line.366"></a>
+<span class="sourceLineNo">367</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.367"></a>
+<span class="sourceLineNo">368</span>      @HTTPMethodParameter(name = DataGroups.PARAMETER_DEFAULT_NAME, required = false) DataGroups dataGroups,<a name="line.368"></a>
+<span class="sourceLineNo">369</span>      @HTTPMethodParameter(name = Limits.PARAMETER_DEFAULT_NAME, required = false) Limits limits,<a name="line.369"></a>
+<span class="sourceLineNo">370</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SERVICE_ID, required = false) IntegerParameter serviceIds,<a name="line.370"></a>
+<span class="sourceLineNo">371</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_MEDIA_OBJECT_ID, required = false) StringParameter mediaObjectIds<a name="line.371"></a>
+<span class="sourceLineNo">372</span>      )<a name="line.372"></a>
+<span class="sourceLineNo">373</span>  {<a name="line.373"></a>
+<span class="sourceLineNo">374</span>    return CAReferenceCore.getMediaObjects(authenticatedUser.getUserIdentity(), dataGroups, limits, ServiceType.fromIdArray(serviceIds.getValues()), mediaObjectIds.getValues());<a name="line.374"></a>
+<span class="sourceLineNo">375</span>  }<a name="line.375"></a>
+<span class="sourceLineNo">376</span>  <a name="line.376"></a>
+<span class="sourceLineNo">377</span>  /**<a name="line.377"></a>
+<span class="sourceLineNo">378</span>   * <a name="line.378"></a>
+<span class="sourceLineNo">379</span>   * This method is for removing photo metadata. Note that even though all metadata for the given photo(s) will be removed, the removal operation happens only in the scope of the system known ("front-end local") UID and no changes will be propagated to the content storage service hosting the original photo. This also means that synchronizing the external account will re-insert the photo with a different UID and without the original metadata content.<a name="line.379"></a>
+<span class="sourceLineNo">380</span>   * <a name="line.380"></a>
+<span class="sourceLineNo">381</span>   * After this method call the UID will be invalid and feedback tasks will be generated and submitted to back-ends notifying the deletion of the photo.<a name="line.381"></a>
+<span class="sourceLineNo">382</span>   * <a name="line.382"></a>
+<span class="sourceLineNo">383</span>   * This method will in general ignore non-existent UIDs, if provided, but will give an error on permission problem.<a name="line.383"></a>
+<span class="sourceLineNo">384</span>   * <a name="line.384"></a>
+<span class="sourceLineNo">385</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.385"></a>
+<span class="sourceLineNo">386</span>   *<a name="line.386"></a>
+<span class="sourceLineNo">387</span>   * DELETE /rest/{@value service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT}/{@value service.tut.pori.contentanalysis.Definitions#METHOD_DELETE_PHOTO_METADATA}?{@value service.tut.pori.contentanalysis.Definitions#PARAMETER_GUID}=0&lt;br&gt;<a name="line.387"></a>
+<span class="sourceLineNo">388</span>   *<a name="line.388"></a>
+<span class="sourceLineNo">389</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.389"></a>
+<span class="sourceLineNo">390</span>   * <a name="line.390"></a>
+<span class="sourceLineNo">391</span>   * {@doc.restlet service="[service.tut.pori.contentanalysis.reference.Definitions#SERVICE_CA_REFERENCE_CLIENT]" method="[service.tut.pori.contentanalysis.Definitions#METHOD_DELETE_PHOTO_METADATA]" type="DELETE" query="[service.tut.pori.contentanalysis.Definitions#PARAMETER_GUID]=0" body_uri=""}<a name="line.391"></a>
+<span class="sourceLineNo">392</span>   * <a name="line.392"></a>
+<span class="sourceLineNo">393</span>   * @param authenticatedUser  Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.393"></a>
+<span class="sourceLineNo">394</span>   * @param guid One or more photo GUIDs for deletion.<a name="line.394"></a>
+<span class="sourceLineNo">395</span>   * @return response<a name="line.395"></a>
+<span class="sourceLineNo">396</span>   */<a name="line.396"></a>
+<span class="sourceLineNo">397</span>  @HTTPServiceMethod(name = Definitions.METHOD_DELETE_PHOTO_METADATA, acceptedMethods={core.tut.pori.http.Definitions.METHOD_DELETE})<a name="line.397"></a>
+<span class="sourceLineNo">398</span>  public Response deletePhotos(<a name="line.398"></a>
+<span class="sourceLineNo">399</span>      @HTTPAuthenticationParameter(required=false) AuthenticationParameter authenticatedUser,<a name="line.399"></a>
+<span class="sourceLineNo">400</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_GUID) StringParameter guid<a name="line.400"></a>
+<span class="sourceLineNo">401</span>      )<a name="line.401"></a>
+<span class="sourceLineNo">402</span>  {<a name="line.402"></a>
+<span class="sourceLineNo">403</span>    CAReferenceCore.deletePhotos(authenticatedUser.getUserIdentity(), guid.getValues());<a name="line.403"></a>
+<span class="sourceLineNo">404</span>    return new Response();<a name="line.404"></a>
+<span class="sourceLineNo">405</span>  }<a name="line.405"></a>
+<span class="sourceLineNo">406</span>}<a name="line.406"></a>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</pre>
+</div>
+</body>
+</html>

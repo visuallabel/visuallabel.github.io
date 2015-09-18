@@ -1,0 +1,243 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+<head>
+<title>Source code</title>
+<link rel="stylesheet" type="text/css" href="../../../../../../stylesheet.css" title="Style">
+</head>
+<body>
+<div class="sourceContainer">
+<pre><span class="sourceLineNo">001</span>/**<a name="line.1"></a>
+<span class="sourceLineNo">002</span> * Copyright 2014 Tampere University of Technology, Pori Unit<a name="line.2"></a>
+<span class="sourceLineNo">003</span> * <a name="line.3"></a>
+<span class="sourceLineNo">004</span> * Licensed under the Apache License, Version 2.0 (the "License");<a name="line.4"></a>
+<span class="sourceLineNo">005</span> * you may not use this file except in compliance with the License.<a name="line.5"></a>
+<span class="sourceLineNo">006</span> * You may obtain a copy of the License at<a name="line.6"></a>
+<span class="sourceLineNo">007</span> * <a name="line.7"></a>
+<span class="sourceLineNo">008</span> *   http://www.apache.org/licenses/LICENSE-2.0<a name="line.8"></a>
+<span class="sourceLineNo">009</span> * <a name="line.9"></a>
+<span class="sourceLineNo">010</span> * Unless required by applicable law or agreed to in writing, software<a name="line.10"></a>
+<span class="sourceLineNo">011</span> * distributed under the License is distributed on an "AS IS" BASIS,<a name="line.11"></a>
+<span class="sourceLineNo">012</span> * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<a name="line.12"></a>
+<span class="sourceLineNo">013</span> * See the License for the specific language governing permissions and<a name="line.13"></a>
+<span class="sourceLineNo">014</span> * limitations under the License.<a name="line.14"></a>
+<span class="sourceLineNo">015</span> */<a name="line.15"></a>
+<span class="sourceLineNo">016</span>package service.tut.pori.facebookjazz.reference;<a name="line.16"></a>
+<span class="sourceLineNo">017</span><a name="line.17"></a>
+<span class="sourceLineNo">018</span>import service.tut.pori.facebookjazz.Definitions;<a name="line.18"></a>
+<span class="sourceLineNo">019</span>import service.tut.pori.facebookjazz.WeightModifierList;<a name="line.19"></a>
+<span class="sourceLineNo">020</span>import core.tut.pori.http.Response;<a name="line.20"></a>
+<span class="sourceLineNo">021</span>import core.tut.pori.http.annotations.HTTPAuthenticationParameter;<a name="line.21"></a>
+<span class="sourceLineNo">022</span>import core.tut.pori.http.annotations.HTTPMethodParameter;<a name="line.22"></a>
+<span class="sourceLineNo">023</span>import core.tut.pori.http.annotations.HTTPService;<a name="line.23"></a>
+<span class="sourceLineNo">024</span>import core.tut.pori.http.annotations.HTTPServiceMethod;<a name="line.24"></a>
+<span class="sourceLineNo">025</span>import core.tut.pori.http.parameters.AuthenticationParameter;<a name="line.25"></a>
+<span class="sourceLineNo">026</span>import core.tut.pori.http.parameters.BooleanParameter;<a name="line.26"></a>
+<span class="sourceLineNo">027</span>import core.tut.pori.http.parameters.DataGroups;<a name="line.27"></a>
+<span class="sourceLineNo">028</span>import core.tut.pori.http.parameters.InputStreamParameter;<a name="line.28"></a>
+<span class="sourceLineNo">029</span>import core.tut.pori.http.parameters.Limits;<a name="line.29"></a>
+<span class="sourceLineNo">030</span>import core.tut.pori.http.parameters.LongParameter;<a name="line.30"></a>
+<span class="sourceLineNo">031</span>import core.tut.pori.http.parameters.SortOptions;<a name="line.31"></a>
+<span class="sourceLineNo">032</span>import core.tut.pori.http.parameters.StringParameter;<a name="line.32"></a>
+<span class="sourceLineNo">033</span>import core.tut.pori.utils.XMLFormatter;<a name="line.33"></a>
+<span class="sourceLineNo">034</span><a name="line.34"></a>
+<span class="sourceLineNo">035</span>/**<a name="line.35"></a>
+<span class="sourceLineNo">036</span> * Reference implementation for client API methods.<a name="line.36"></a>
+<span class="sourceLineNo">037</span> * <a name="line.37"></a>
+<span class="sourceLineNo">038</span> * &lt;h1&gt;Implementation Service path {@value service.tut.pori.facebookjazz.Definitions#SERVICE_FBJ}&lt;/h1&gt;<a name="line.38"></a>
+<span class="sourceLineNo">039</span> * <a name="line.39"></a>
+<span class="sourceLineNo">040</span> * @see service.tut.pori.facebookjazz.FacebookJazzService<a name="line.40"></a>
+<span class="sourceLineNo">041</span> *<a name="line.41"></a>
+<span class="sourceLineNo">042</span> */<a name="line.42"></a>
+<span class="sourceLineNo">043</span>@HTTPService(name = service.tut.pori.facebookjazz.reference.Definitions.SERVICE_FBJ_REFERENCE_CLIENT)<a name="line.43"></a>
+<span class="sourceLineNo">044</span>public class ClientService {<a name="line.44"></a>
+<span class="sourceLineNo">045</span>  private XMLFormatter _formatter = new XMLFormatter();<a name="line.45"></a>
+<span class="sourceLineNo">046</span>  /**<a name="line.46"></a>
+<span class="sourceLineNo">047</span>   * Clients can use this method for retrieving a list of tags extracted by the profile summarization. This will always return the tags for the currently authenticated user.<a name="line.47"></a>
+<span class="sourceLineNo">048</span>   * <a name="line.48"></a>
+<span class="sourceLineNo">049</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.49"></a>
+<span class="sourceLineNo">050</span>   *<a name="line.50"></a>
+<span class="sourceLineNo">051</span>   * GET /rest/{@value service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT}/{@value service.tut.pori.facebookjazz.Definitions#METHOD_RETRIEVE_TAGS_FOR_USER}&lt;br&gt;<a name="line.51"></a>
+<span class="sourceLineNo">052</span>   *<a name="line.52"></a>
+<span class="sourceLineNo">053</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.53"></a>
+<span class="sourceLineNo">054</span>   * <a name="line.54"></a>
+<span class="sourceLineNo">055</span>   * {@doc.restlet service="[service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT]" method="[service.tut.pori.facebookjazz.Definitions#METHOD_RETRIEVE_TAGS_FOR_USER]" type="GET" query="" body_uri=""}<a name="line.55"></a>
+<span class="sourceLineNo">056</span>   * <a name="line.56"></a>
+<span class="sourceLineNo">057</span>   * @param authenticatedUser This method requires user authentication. The user must have authorized the use of his/her Facebook account. Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.57"></a>
+<span class="sourceLineNo">058</span>   * @param sortOptions supported element names are {@value service.tut.pori.contentanalysis.Definitions#ELEMENT_CONFIDENCE}, {@value service.tut.pori.contentanalysis.Definitions#ELEMENT_RANK} and {@value service.tut.pori.contentanalysis.Definitions#ELEMENT_VALUE}. Default sorting order is the original addition order of the objects.<a name="line.58"></a>
+<span class="sourceLineNo">059</span>   * @param dataGroups For supported data groups see {@link service.tut.pori.contentanalysis.reference.ClientService#retrieveMediaObjects(AuthenticationParameter, DataGroups, Limits, core.tut.pori.http.parameters.IntegerParameter, StringParameter)}.<a name="line.59"></a>
+<span class="sourceLineNo">060</span>   * @param limits paging limits<a name="line.60"></a>
+<span class="sourceLineNo">061</span>   * @return See {@link service.tut.pori.contentanalysis.MediaObjectList}<a name="line.61"></a>
+<span class="sourceLineNo">062</span>   */<a name="line.62"></a>
+<span class="sourceLineNo">063</span>  @HTTPServiceMethod(name = Definitions.METHOD_RETRIEVE_TAGS_FOR_USER, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.63"></a>
+<span class="sourceLineNo">064</span>  public Response retrieveTagsForUser(<a name="line.64"></a>
+<span class="sourceLineNo">065</span>      @HTTPAuthenticationParameter(required=false) AuthenticationParameter authenticatedUser,<a name="line.65"></a>
+<span class="sourceLineNo">066</span>      @HTTPMethodParameter(name = DataGroups.PARAMETER_DEFAULT_NAME, required = false) DataGroups dataGroups,<a name="line.66"></a>
+<span class="sourceLineNo">067</span>      @HTTPMethodParameter(name = Limits.PARAMETER_DEFAULT_NAME, required = false) Limits limits,<a name="line.67"></a>
+<span class="sourceLineNo">068</span>      @HTTPMethodParameter(name = service.tut.pori.contentanalysis.Definitions.PARAMETER_SORT, required = false) SortOptions sortOptions<a name="line.68"></a>
+<span class="sourceLineNo">069</span>      )<a name="line.69"></a>
+<span class="sourceLineNo">070</span>  {<a name="line.70"></a>
+<span class="sourceLineNo">071</span>    return new Response(FBJReferenceCore.retrieveTagsForUser(authenticatedUser.getUserIdentity(), dataGroups, limits, sortOptions));<a name="line.71"></a>
+<span class="sourceLineNo">072</span>  }<a name="line.72"></a>
+<span class="sourceLineNo">073</span>  <a name="line.73"></a>
+<span class="sourceLineNo">074</span>  /**<a name="line.74"></a>
+<span class="sourceLineNo">075</span>   * Clients can use this method for ranking (rating) tags.<a name="line.75"></a>
+<span class="sourceLineNo">076</span>   * <a name="line.76"></a>
+<span class="sourceLineNo">077</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.77"></a>
+<span class="sourceLineNo">078</span>   *<a name="line.78"></a>
+<span class="sourceLineNo">079</span>   * GET /rest/{@value service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT}/{@value service.tut.pori.facebookjazz.Definitions#METHOD_SET_RANK}?{@value service.tut.pori.facebookjazz.Definitions#PARAMETER_RANK}=1;100,2;-10&lt;br&gt;<a name="line.79"></a>
+<span class="sourceLineNo">080</span>   *<a name="line.80"></a>
+<span class="sourceLineNo">081</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.81"></a>
+<span class="sourceLineNo">082</span>   * <a name="line.82"></a>
+<span class="sourceLineNo">083</span>   * {@doc.restlet service="[service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT]" method="[service.tut.pori.facebookjazz.Definitions#METHOD_SET_RANK]" type="POST" query="[service.tut.pori.facebookjazz.Definitions#PARAMETER_RANK]=1;100,2;-10" body_uri=""}<a name="line.83"></a>
+<span class="sourceLineNo">084</span>   * <a name="line.84"></a>
+<span class="sourceLineNo">085</span>   * @param authenticatedUser This method requires user authentication. The user must have authorized the use of his/her Facebook account. Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.85"></a>
+<span class="sourceLineNo">086</span>   * @param ranks with format {@value service.tut.pori.facebookjazz.Definitions#PARAMETER_RANK}={@value service.tut.pori.contentanalysis.Definitions#ELEMENT_MEDIA_OBJECT_ID}{@value core.tut.pori.http.Definitions#SEPARATOR_URI_QUERY_TYPE_VALUE}VALUE{@value core.tut.pori.http.Definitions#SEPARATOR_URI_QUERY_PARAM_VALUES}{@value service.tut.pori.contentanalysis.Definitions#ELEMENT_MEDIA_OBJECT_ID}{@value core.tut.pori.http.Definitions#SEPARATOR_URI_QUERY_TYPE_VALUE}VALUE{@value core.tut.pori.http.Definitions#SEPARATOR_URI_QUERY_PARAM_VALUES} ...<a name="line.86"></a>
+<span class="sourceLineNo">087</span>   */<a name="line.87"></a>
+<span class="sourceLineNo">088</span>  @HTTPServiceMethod(name = Definitions.METHOD_SET_RANK, acceptedMethods={core.tut.pori.http.Definitions.METHOD_POST})<a name="line.88"></a>
+<span class="sourceLineNo">089</span>  public void setRank(<a name="line.89"></a>
+<span class="sourceLineNo">090</span>      @HTTPAuthenticationParameter(required=false) AuthenticationParameter authenticatedUser,<a name="line.90"></a>
+<span class="sourceLineNo">091</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_RANK) StringParameter ranks)<a name="line.91"></a>
+<span class="sourceLineNo">092</span>  {<a name="line.92"></a>
+<span class="sourceLineNo">093</span>    FBJReferenceCore.setRank(authenticatedUser.getUserIdentity(), ranks.getValues());<a name="line.93"></a>
+<span class="sourceLineNo">094</span>  }<a name="line.94"></a>
+<span class="sourceLineNo">095</span>  <a name="line.95"></a>
+<span class="sourceLineNo">096</span>  /**<a name="line.96"></a>
+<span class="sourceLineNo">097</span>   * Clients can use this method for retrieving tag weight modifiers.<a name="line.97"></a>
+<span class="sourceLineNo">098</span>   * <a name="line.98"></a>
+<span class="sourceLineNo">099</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.99"></a>
+<span class="sourceLineNo">100</span>   *<a name="line.100"></a>
+<span class="sourceLineNo">101</span>   * GET /rest/{@value service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT}/{@value service.tut.pori.facebookjazz.Definitions#METHOD_RETRIEVE_TAG_WEIGHTS}&lt;br&gt;<a name="line.101"></a>
+<span class="sourceLineNo">102</span>   *<a name="line.102"></a>
+<span class="sourceLineNo">103</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.103"></a>
+<span class="sourceLineNo">104</span>   * <a name="line.104"></a>
+<span class="sourceLineNo">105</span>   * {@doc.restlet service="[service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT]" method="[service.tut.pori.facebookjazz.Definitions#METHOD_RETRIEVE_TAG_WEIGHTS]" type="GET" query="" body_uri=""}<a name="line.105"></a>
+<span class="sourceLineNo">106</span>   *  <a name="line.106"></a>
+<span class="sourceLineNo">107</span>   * @param authenticatedUser This method requires user authentication. The user must have authorized the use of his/her Facebook account. Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.107"></a>
+<span class="sourceLineNo">108</span>   * @param userIdFilter User id filter, if not given the default tag weights will be returned.<a name="line.108"></a>
+<span class="sourceLineNo">109</span>   * @return See {@link service.tut.pori.facebookjazz.WeightModifierList}<a name="line.109"></a>
+<span class="sourceLineNo">110</span>   */<a name="line.110"></a>
+<span class="sourceLineNo">111</span>  @HTTPServiceMethod(name = Definitions.METHOD_RETRIEVE_TAG_WEIGHTS, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.111"></a>
+<span class="sourceLineNo">112</span>  public Response retrieveTagWeights(<a name="line.112"></a>
+<span class="sourceLineNo">113</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.113"></a>
+<span class="sourceLineNo">114</span>      @HTTPMethodParameter(name = service.tut.pori.users.Definitions.PARAMETER_USER_ID, required = false) LongParameter userIdFilter<a name="line.114"></a>
+<span class="sourceLineNo">115</span>      )<a name="line.115"></a>
+<span class="sourceLineNo">116</span>  {<a name="line.116"></a>
+<span class="sourceLineNo">117</span>    return new Response(FBJReferenceCore.retrieveTagWeights(authenticatedUser.getUserIdentity(), userIdFilter.getValue()));<a name="line.117"></a>
+<span class="sourceLineNo">118</span>  }<a name="line.118"></a>
+<span class="sourceLineNo">119</span>  <a name="line.119"></a>
+<span class="sourceLineNo">120</span>  /**<a name="line.120"></a>
+<span class="sourceLineNo">121</span>   * Clients can use this method to set tag weights.<a name="line.121"></a>
+<span class="sourceLineNo">122</span>   * <a name="line.122"></a>
+<span class="sourceLineNo">123</span>   * POST /rest/{@value service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT}/{@value service.tut.pori.facebookjazz.Definitions#METHOD_SET_TAG_WEIGHTS}&lt;br&gt;<a name="line.123"></a>
+<span class="sourceLineNo">124</span>   * Content-Type: text/xml; charset=UTF-8&lt;br&gt;&lt;br&gt;<a name="line.124"></a>
+<span class="sourceLineNo">125</span>   *<a name="line.125"></a>
+<span class="sourceLineNo">126</span>   * &lt;b&gt;[HTTP BODY STARTS]&lt;/b&gt;&lt;br&gt;<a name="line.126"></a>
+<span class="sourceLineNo">127</span>   * <a name="line.127"></a>
+<span class="sourceLineNo">128</span>   * {@doc.restlet service="[service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_EXAMPLE]" method="[service.tut.pori.facebookjazz.Definitions#ELEMENT_WEIGHT_MODIFIER_LIST]" type="GET" query="" body_uri=""} &lt;br&gt;<a name="line.128"></a>
+<span class="sourceLineNo">129</span>   * <a name="line.129"></a>
+<span class="sourceLineNo">130</span>   * &lt;b&gt;[HTTP BODY ENDS]&lt;/b&gt;&lt;br&gt;<a name="line.130"></a>
+<span class="sourceLineNo">131</span>   *<a name="line.131"></a>
+<span class="sourceLineNo">132</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.132"></a>
+<span class="sourceLineNo">133</span>   * <a name="line.133"></a>
+<span class="sourceLineNo">134</span>   * {@doc.restlet service="[service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT]" method="[service.tut.pori.facebookjazz.Definitions#METHOD_SET_TAG_WEIGHTS]" type="POST" query="" body_uri="[service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_EXAMPLE]/[service.tut.pori.facebookjazz.Definitions#ELEMENT_WEIGHT_MODIFIER_LIST]"}<a name="line.134"></a>
+<span class="sourceLineNo">135</span>   * <a name="line.135"></a>
+<span class="sourceLineNo">136</span>   * @param authenticatedUser This method requires user authentication. The user must have authorized the use of his/her Facebook account. Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.136"></a>
+<span class="sourceLineNo">137</span>   * @param xml The tag weight modifiers for the user. See {@link service.tut.pori.facebookjazz.WeightModifierList}<a name="line.137"></a>
+<span class="sourceLineNo">138</span>   */<a name="line.138"></a>
+<span class="sourceLineNo">139</span>  @HTTPServiceMethod(name = Definitions.METHOD_SET_TAG_WEIGHTS, acceptedMethods={core.tut.pori.http.Definitions.METHOD_POST})<a name="line.139"></a>
+<span class="sourceLineNo">140</span>  public void setTagWeights(<a name="line.140"></a>
+<span class="sourceLineNo">141</span>      @HTTPAuthenticationParameter(required = false) AuthenticationParameter authenticatedUser,<a name="line.141"></a>
+<span class="sourceLineNo">142</span>      @HTTPMethodParameter(name = InputStreamParameter.PARAMETER_DEFAULT_NAME, bodyParameter = true) InputStreamParameter xml<a name="line.142"></a>
+<span class="sourceLineNo">143</span>      )<a name="line.143"></a>
+<span class="sourceLineNo">144</span>  {<a name="line.144"></a>
+<span class="sourceLineNo">145</span>    FBJReferenceCore.setTagWeights(authenticatedUser.getUserIdentity(), _formatter.toObject(xml.getValue(), WeightModifierList.class));<a name="line.145"></a>
+<span class="sourceLineNo">146</span>  }<a name="line.146"></a>
+<span class="sourceLineNo">147</span>  <a name="line.147"></a>
+<span class="sourceLineNo">148</span>  /**<a name="line.148"></a>
+<span class="sourceLineNo">149</span>   * Clients can use this method to initialize account summarization, and optionally perform synchronization for photo content.<a name="line.149"></a>
+<span class="sourceLineNo">150</span>   * <a name="line.150"></a>
+<span class="sourceLineNo">151</span>   * &lt;h2&gt;Example Query:&lt;/h2&gt;<a name="line.151"></a>
+<span class="sourceLineNo">152</span>   *<a name="line.152"></a>
+<span class="sourceLineNo">153</span>   * GET /rest/{@value service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT}/{@value service.tut.pori.facebookjazz.Definitions#METHOD_SUMMARIZE}&lt;br&gt;<a name="line.153"></a>
+<span class="sourceLineNo">154</span>   *<a name="line.154"></a>
+<span class="sourceLineNo">155</span>   * &lt;h2&gt;Example Result:&lt;/h2&gt;<a name="line.155"></a>
+<span class="sourceLineNo">156</span>   * <a name="line.156"></a>
+<span class="sourceLineNo">157</span>   * {@doc.restlet service="[service.tut.pori.facebookjazz.reference.Definitions#SERVICE_FBJ_REFERENCE_CLIENT]" method="[service.tut.pori.facebookjazz.Definitions#METHOD_SUMMARIZE]" type="GET" query="" body_uri=""}<a name="line.157"></a>
+<span class="sourceLineNo">158</span>   * <a name="line.158"></a>
+<span class="sourceLineNo">159</span>   * @param authenticatedUser This method requires user authentication. The user must have authorized the use of his/her Facebook account. Note: this method requires authentication, but for the reference implementation, anonymous access is granted.<a name="line.159"></a>
+<span class="sourceLineNo">160</span>   * @param contentTypes Any combination of content types. Valid types are: events, generated_tags, groups, likes, photo_descriptions, status_messages, video_descriptions. See {@link service.tut.pori.facebookjazz.FacebookExtractor.ContentType}<a name="line.160"></a>
+<span class="sourceLineNo">161</span>   * @param synchronize On &lt;i&gt;true&lt;/i&gt; synchronizes the photo content of the user's account prior to starting the summarization process. Photo analysis tasks will be created for new content using default analysis back-ends.<a name="line.161"></a>
+<span class="sourceLineNo">162</span>   */<a name="line.162"></a>
+<span class="sourceLineNo">163</span>  @HTTPServiceMethod(name = Definitions.METHOD_SUMMARIZE)<a name="line.163"></a>
+<span class="sourceLineNo">164</span>  public void summarize(<a name="line.164"></a>
+<span class="sourceLineNo">165</span>      @HTTPAuthenticationParameter(required=false) AuthenticationParameter authenticatedUser,<a name="line.165"></a>
+<span class="sourceLineNo">166</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_CONTENT_TYPES, required = false) StringParameter contentTypes,<a name="line.166"></a>
+<span class="sourceLineNo">167</span>      @HTTPMethodParameter(name = Definitions.PARAMETER_SYNCHRONIZE, required = false) BooleanParameter synchronize)<a name="line.167"></a>
+<span class="sourceLineNo">168</span>  {<a name="line.168"></a>
+<span class="sourceLineNo">169</span>    FBJReferenceCore.summarize(authenticatedUser.getUserIdentity(), contentTypes.getValues(), synchronize.isTrue());<a name="line.169"></a>
+<span class="sourceLineNo">170</span>  }<a name="line.170"></a>
+<span class="sourceLineNo">171</span>}<a name="line.171"></a>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</pre>
+</div>
+</body>
+</html>
