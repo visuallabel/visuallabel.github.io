@@ -7,7 +7,7 @@
 <body>
 <div class="sourceContainer">
 <pre><span class="sourceLineNo">001</span>/**<a name="line.1"></a>
-<span class="sourceLineNo">002</span> * Copyright 2014 Tampere University of Technology, Pori Unit<a name="line.2"></a>
+<span class="sourceLineNo">002</span> * Copyright 2014 Tampere University of Technology, Pori Department<a name="line.2"></a>
 <span class="sourceLineNo">003</span> * <a name="line.3"></a>
 <span class="sourceLineNo">004</span> * Licensed under the Apache License, Version 2.0 (the "License");<a name="line.4"></a>
 <span class="sourceLineNo">005</span> * you may not use this file except in compliance with the License.<a name="line.5"></a>
@@ -80,7 +80,7 @@
 <span class="sourceLineNo">072</span>   * This method can be used to retrieve all external account connections known by the system for the authenticated user.<a name="line.72"></a>
 <span class="sourceLineNo">073</span>   * <a name="line.73"></a>
 <span class="sourceLineNo">074</span>   * @param authenticatedUser<a name="line.74"></a>
-<span class="sourceLineNo">075</span>   * @param serviceTypes optional service type filter<a name="line.75"></a>
+<span class="sourceLineNo">075</span>   * @param serviceTypes optional service type filter {@link core.tut.pori.users.ExternalAccountConnection.UserServiceType}<a name="line.75"></a>
 <span class="sourceLineNo">076</span>   * @return See {@link service.tut.pori.users.ExternalAccountConnectionList}<a name="line.76"></a>
 <span class="sourceLineNo">077</span>   */<a name="line.77"></a>
 <span class="sourceLineNo">078</span>  @HTTPServiceMethod(name=Definitions.METHOD_GET_EXTERNAL_ACCOUNT_CONNECTIONS, acceptedMethods={core.tut.pori.http.Definitions.METHOD_GET})<a name="line.78"></a>
@@ -95,7 +95,7 @@
 <span class="sourceLineNo">087</span>   * This method can be used to remove external account connection for the authenticated user.<a name="line.87"></a>
 <span class="sourceLineNo">088</span>   * <a name="line.88"></a>
 <span class="sourceLineNo">089</span>   * @param authenticatedUser<a name="line.89"></a>
-<span class="sourceLineNo">090</span>   * @param serviceTypes the service to remove<a name="line.90"></a>
+<span class="sourceLineNo">090</span>   * @param serviceTypes the service to remove {@link core.tut.pori.users.ExternalAccountConnection.UserServiceType}<a name="line.90"></a>
 <span class="sourceLineNo">091</span>   */<a name="line.91"></a>
 <span class="sourceLineNo">092</span>  @HTTPServiceMethod(name=Definitions.METHOD_DELETE_EXTERNAL_ACCOUNT_CONNECTION, acceptedMethods = {core.tut.pori.http.Definitions.METHOD_DELETE})<a name="line.92"></a>
 <span class="sourceLineNo">093</span>  public void deleteExternalAccountConnection(<a name="line.93"></a>

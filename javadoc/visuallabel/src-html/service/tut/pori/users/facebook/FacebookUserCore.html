@@ -7,7 +7,7 @@
 <body>
 <div class="sourceContainer">
 <pre><span class="sourceLineNo">001</span>/**<a name="line.1"></a>
-<span class="sourceLineNo">002</span> * Copyright 2014 Tampere University of Technology, Pori Unit<a name="line.2"></a>
+<span class="sourceLineNo">002</span> * Copyright 2014 Tampere University of Technology, Pori Department<a name="line.2"></a>
 <span class="sourceLineNo">003</span> * <a name="line.3"></a>
 <span class="sourceLineNo">004</span> * Licensed under the Apache License, Version 2.0 (the "License");<a name="line.4"></a>
 <span class="sourceLineNo">005</span> * you may not use this file except in compliance with the License.<a name="line.5"></a>
@@ -37,414 +37,413 @@
 <span class="sourceLineNo">029</span>import org.apache.log4j.Logger;<a name="line.29"></a>
 <span class="sourceLineNo">030</span>import org.springframework.context.ApplicationListener;<a name="line.30"></a>
 <span class="sourceLineNo">031</span><a name="line.31"></a>
-<span class="sourceLineNo">032</span>import service.tut.pori.users.Definitions;<a name="line.32"></a>
-<span class="sourceLineNo">033</span>import service.tut.pori.users.OAuth2Token;<a name="line.33"></a>
-<span class="sourceLineNo">034</span>import service.tut.pori.users.UserCore;<a name="line.34"></a>
-<span class="sourceLineNo">035</span>import service.tut.pori.users.UserCore.Registration;<a name="line.35"></a>
-<span class="sourceLineNo">036</span>import service.tut.pori.users.UserCore.RegistrationStatus;<a name="line.36"></a>
-<span class="sourceLineNo">037</span>import service.tut.pori.users.UserServiceEvent;<a name="line.37"></a>
-<span class="sourceLineNo">038</span>import core.tut.pori.context.ServiceInitializer;<a name="line.38"></a>
-<span class="sourceLineNo">039</span>import core.tut.pori.http.RedirectResponse;<a name="line.39"></a>
-<span class="sourceLineNo">040</span>import core.tut.pori.http.Response;<a name="line.40"></a>
-<span class="sourceLineNo">041</span>import core.tut.pori.http.Response.Status;<a name="line.41"></a>
-<span class="sourceLineNo">042</span>import core.tut.pori.users.ExternalAccountConnection;<a name="line.42"></a>
-<span class="sourceLineNo">043</span>import core.tut.pori.users.UserEvent;<a name="line.43"></a>
-<span class="sourceLineNo">044</span>import core.tut.pori.users.ExternalAccountConnection.UserServiceType;<a name="line.44"></a>
-<span class="sourceLineNo">045</span>import core.tut.pori.users.UserEvent.EventType;<a name="line.45"></a>
-<span class="sourceLineNo">046</span>import core.tut.pori.users.UserIdentity;<a name="line.46"></a>
-<span class="sourceLineNo">047</span><a name="line.47"></a>
-<span class="sourceLineNo">048</span>/**<a name="line.48"></a>
-<span class="sourceLineNo">049</span> * Facebook User Service Core methods.<a name="line.49"></a>
-<span class="sourceLineNo">050</span> * <a name="line.50"></a>
-<span class="sourceLineNo">051</span> * This implementation follows:<a name="line.51"></a>
-<span class="sourceLineNo">052</span> * <a name="line.52"></a>
-<span class="sourceLineNo">053</span> * refreshing tokens:<a name="line.53"></a>
-<span class="sourceLineNo">054</span> * http://developers.facebook.com/docs/facebook-login/access-tokens/#extending<a name="line.54"></a>
-<span class="sourceLineNo">055</span> * http://stackoverflow.com/questions/16563692/refresh-token-and-access-token-in-facebook-api<a name="line.55"></a>
-<span class="sourceLineNo">056</span> * <a name="line.56"></a>
-<span class="sourceLineNo">057</span> * http://developers.facebook.com/docs/facebook-login/login-flow-for-web-no-jssdk/<a name="line.57"></a>
-<span class="sourceLineNo">058</span> * <a name="line.58"></a>
-<span class="sourceLineNo">059</span> * This class emits events of type {@link core.tut.pori.users.UserEvent} for user account modifications with one of the listed {@link core.tut.pori.users.UserEvent.EventType} :<a name="line.59"></a>
-<span class="sourceLineNo">060</span> * &lt;ul&gt;<a name="line.60"></a>
-<span class="sourceLineNo">061</span> *  &lt;li&gt;{@link core.tut.pori.users.UserEvent.EventType#USER_AUTHORIZATION_GIVEN} for new user account authorizations.&lt;/li&gt;<a name="line.61"></a>
-<span class="sourceLineNo">062</span> *  &lt;li&gt;{@link core.tut.pori.users.UserEvent.EventType#USER_AUTHORIZATION_REVOKED} for removed user account authorizations.&lt;/li&gt;<a name="line.62"></a>
-<span class="sourceLineNo">063</span> * &lt;/ul&gt;<a name="line.63"></a>
-<span class="sourceLineNo">064</span> */<a name="line.64"></a>
-<span class="sourceLineNo">065</span>public final class FacebookUserCore {<a name="line.65"></a>
-<span class="sourceLineNo">066</span>  private static final Logger LOGGER = Logger.getLogger(FacebookUserCore.class);<a name="line.66"></a>
-<span class="sourceLineNo">067</span>  private static final char DELIMITER_PARAMETER_VALUE = '=';<a name="line.67"></a>
-<span class="sourceLineNo">068</span>  private static final char DELIMITER_PARAMETERS = '&amp;';<a name="line.68"></a>
-<span class="sourceLineNo">069</span>  private static final String PARAMETER_ACCESS_TOKEN = Definitions.PARAMETER_OAUTH2_ACCESS_TOKEN; // facebook specific body-parameter<a name="line.69"></a>
-<span class="sourceLineNo">070</span>  private static final String PARAMETER_EXPIRES = "expires"; // facebook specific body parameter<a name="line.70"></a>
-<span class="sourceLineNo">071</span>  private static final String PARAMETER_VALUE_REFRESH_GRANT_TYPE = "fb_exchange_token";<a name="line.71"></a>
-<span class="sourceLineNo">072</span>  private static final String PARAMETER_VALUE_RESPONSE_TYPE = "code";<a name="line.72"></a>
-<span class="sourceLineNo">073</span>  <a name="line.73"></a>
-<span class="sourceLineNo">074</span><a name="line.74"></a>
-<span class="sourceLineNo">075</span>  /**<a name="line.75"></a>
-<span class="sourceLineNo">076</span>   * <a name="line.76"></a>
-<span class="sourceLineNo">077</span>   */<a name="line.77"></a>
-<span class="sourceLineNo">078</span>  private FacebookUserCore(){<a name="line.78"></a>
-<span class="sourceLineNo">079</span>    // nothing needed<a name="line.79"></a>
-<span class="sourceLineNo">080</span>  }<a name="line.80"></a>
-<span class="sourceLineNo">081</span><a name="line.81"></a>
-<span class="sourceLineNo">082</span>  /**<a name="line.82"></a>
-<span class="sourceLineNo">083</span>   * <a name="line.83"></a>
-<span class="sourceLineNo">084</span>   * @param authorizationCode<a name="line.84"></a>
-<span class="sourceLineNo">085</span>   * @param errorCode<a name="line.85"></a>
-<span class="sourceLineNo">086</span>   * @param nonce<a name="line.86"></a>
-<span class="sourceLineNo">087</span>   * @return response<a name="line.87"></a>
-<span class="sourceLineNo">088</span>   */<a name="line.88"></a>
-<span class="sourceLineNo">089</span>  public static Response processOAuth2Callback(String authorizationCode, String errorCode, String nonce) {<a name="line.89"></a>
-<span class="sourceLineNo">090</span>    if(StringUtils.isBlank(nonce)){<a name="line.90"></a>
-<span class="sourceLineNo">091</span>      LOGGER.debug("nonce is missing.");<a name="line.91"></a>
-<span class="sourceLineNo">092</span>      return new Response(Status.BAD_REQUEST);<a name="line.92"></a>
-<span class="sourceLineNo">093</span>    }<a name="line.93"></a>
-<span class="sourceLineNo">094</span><a name="line.94"></a>
-<span class="sourceLineNo">095</span>    //Try to split nonce for a redirection URL<a name="line.95"></a>
-<span class="sourceLineNo">096</span>    Pair&lt;String, String&gt; nonceAndUrl = UserCore.getNonceAndRedirectUri(nonce);<a name="line.96"></a>
-<span class="sourceLineNo">097</span>    String redirectUri = null;<a name="line.97"></a>
-<span class="sourceLineNo">098</span>    if(nonceAndUrl != null){<a name="line.98"></a>
-<span class="sourceLineNo">099</span>      nonce = nonceAndUrl.getLeft();<a name="line.99"></a>
-<span class="sourceLineNo">100</span>      redirectUri = nonceAndUrl.getRight();<a name="line.100"></a>
-<span class="sourceLineNo">101</span>    }else{<a name="line.101"></a>
-<span class="sourceLineNo">102</span>      redirectUri = null;<a name="line.102"></a>
-<span class="sourceLineNo">103</span>    }<a name="line.103"></a>
-<span class="sourceLineNo">104</span>    <a name="line.104"></a>
-<span class="sourceLineNo">105</span>    FacebookUserDAO dao = ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class);<a name="line.105"></a>
-<span class="sourceLineNo">106</span><a name="line.106"></a>
-<span class="sourceLineNo">107</span>    if(!StringUtils.isEmpty(errorCode)){<a name="line.107"></a>
-<span class="sourceLineNo">108</span>      dao.removeNonce(nonce); // in any case, do not allow to use this nonce again<a name="line.108"></a>
-<span class="sourceLineNo">109</span>      LOGGER.debug("Received callback request with errorCode: "+errorCode);<a name="line.109"></a>
-<span class="sourceLineNo">110</span>      if(StringUtils.isEmpty(redirectUri)){<a name="line.110"></a>
-<span class="sourceLineNo">111</span>        return new Response(Status.OK, errorCode);<a name="line.111"></a>
-<span class="sourceLineNo">112</span>      }else if(redirectUri.contains("?")){<a name="line.112"></a>
-<span class="sourceLineNo">113</span>        return new RedirectResponse(redirectUri+"&amp;error="+errorCode);<a name="line.113"></a>
-<span class="sourceLineNo">114</span>      }else{<a name="line.114"></a>
-<span class="sourceLineNo">115</span>        return new RedirectResponse(redirectUri+"?error="+errorCode);<a name="line.115"></a>
-<span class="sourceLineNo">116</span>      }<a name="line.116"></a>
-<span class="sourceLineNo">117</span>    }<a name="line.117"></a>
-<span class="sourceLineNo">118</span><a name="line.118"></a>
-<span class="sourceLineNo">119</span>    UserIdentity userId = dao.getUser(nonce);<a name="line.119"></a>
-<span class="sourceLineNo">120</span>    if(userId == null){ // the nonce do not exist or has expired<a name="line.120"></a>
-<span class="sourceLineNo">121</span>      LOGGER.debug("Received callback request with expired or invalid nonce: "+nonce);<a name="line.121"></a>
-<span class="sourceLineNo">122</span>      return new Response(Status.BAD_REQUEST);<a name="line.122"></a>
-<span class="sourceLineNo">123</span>    }<a name="line.123"></a>
-<span class="sourceLineNo">124</span><a name="line.124"></a>
-<span class="sourceLineNo">125</span>    dao.removeNonce(nonce); // in any case, do not allow to use this nonce again<a name="line.125"></a>
-<span class="sourceLineNo">126</span><a name="line.126"></a>
-<span class="sourceLineNo">127</span>    if(StringUtils.isBlank(authorizationCode)){<a name="line.127"></a>
-<span class="sourceLineNo">128</span>      LOGGER.debug("no authorization code.");<a name="line.128"></a>
-<span class="sourceLineNo">129</span>      return new Response(Status.BAD_REQUEST);<a name="line.129"></a>
-<span class="sourceLineNo">130</span>    }<a name="line.130"></a>
-<span class="sourceLineNo">131</span><a name="line.131"></a>
-<span class="sourceLineNo">132</span>    try (CloseableHttpClient client = HttpClients.createDefault()) {<a name="line.132"></a>
-<span class="sourceLineNo">133</span>      FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.133"></a>
-<span class="sourceLineNo">134</span>      StringBuilder uri = new StringBuilder(fp.getoAuth2TokenUri());<a name="line.134"></a>
-<span class="sourceLineNo">135</span>      uri.append(Definitions.METHOD_FACEBOOK_ACCESS_TOKEN+"?"+Definitions.PARAMETER_OAUTH2_CLIENT_ID+"=");<a name="line.135"></a>
-<span class="sourceLineNo">136</span>      uri.append(fp.getApplicationId());<a name="line.136"></a>
-<span class="sourceLineNo">137</span><a name="line.137"></a>
-<span class="sourceLineNo">138</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_REDIRECT_URI+"=");<a name="line.138"></a>
-<span class="sourceLineNo">139</span>      uri.append(fp.getEncodedOAuth2RedirectUri());<a name="line.139"></a>
-<span class="sourceLineNo">140</span><a name="line.140"></a>
-<span class="sourceLineNo">141</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_SECRET+"=");<a name="line.141"></a>
-<span class="sourceLineNo">142</span>      uri.append(fp.getSharedKey());<a name="line.142"></a>
-<span class="sourceLineNo">143</span><a name="line.143"></a>
-<span class="sourceLineNo">144</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_AUTHORIZATION_CODE+"=");<a name="line.144"></a>
-<span class="sourceLineNo">145</span>      uri.append(authorizationCode);<a name="line.145"></a>
-<span class="sourceLineNo">146</span><a name="line.146"></a>
-<span class="sourceLineNo">147</span>      OAuth2Token newToken = fromResponse(client.execute(new HttpGet(uri.toString()), new BasicResponseHandler()));<a name="line.147"></a>
-<span class="sourceLineNo">148</span>      if(newToken != null &amp;&amp; newToken.isValid()){<a name="line.148"></a>
-<span class="sourceLineNo">149</span>        FacebookCredential fc = getCredential(newToken.getAccessToken());<a name="line.149"></a>
-<span class="sourceLineNo">150</span>        if(fc == null){<a name="line.150"></a>
-<span class="sourceLineNo">151</span>          LOGGER.error("Failed to resolve credentials for the new token.");<a name="line.151"></a>
-<span class="sourceLineNo">152</span>          return new Response(Status.INTERNAL_SERVER_ERROR);<a name="line.152"></a>
-<span class="sourceLineNo">153</span>        }   <a name="line.153"></a>
-<span class="sourceLineNo">154</span>        <a name="line.154"></a>
-<span class="sourceLineNo">155</span>        if(!dao.setToken(fc.getId(), newToken, userId)){<a name="line.155"></a>
-<span class="sourceLineNo">156</span>          LOGGER.warn("Failed to set new token.");<a name="line.156"></a>
-<span class="sourceLineNo">157</span>          return new Response(Status.BAD_REQUEST);<a name="line.157"></a>
-<span class="sourceLineNo">158</span>        }<a name="line.158"></a>
-<span class="sourceLineNo">159</span>        <a name="line.159"></a>
-<span class="sourceLineNo">160</span>        ServiceInitializer.getEventHandler().publishEvent(new UserEvent(FacebookUserCore.class, userId, EventType.USER_AUTHORIZATION_GIVEN));<a name="line.160"></a>
-<span class="sourceLineNo">161</span>      }else{<a name="line.161"></a>
-<span class="sourceLineNo">162</span>        LOGGER.debug("Did not receive a valid token.");<a name="line.162"></a>
-<span class="sourceLineNo">163</span>      }<a name="line.163"></a>
-<span class="sourceLineNo">164</span>    } catch (IOException ex) {<a name="line.164"></a>
-<span class="sourceLineNo">165</span>      LOGGER.error(ex, ex);<a name="line.165"></a>
-<span class="sourceLineNo">166</span>    } <a name="line.166"></a>
-<span class="sourceLineNo">167</span>    <a name="line.167"></a>
-<span class="sourceLineNo">168</span>    if(StringUtils.isEmpty(redirectUri)){<a name="line.168"></a>
-<span class="sourceLineNo">169</span>      return new Response();<a name="line.169"></a>
-<span class="sourceLineNo">170</span>    }else{<a name="line.170"></a>
-<span class="sourceLineNo">171</span>      return new RedirectResponse(redirectUri);<a name="line.171"></a>
-<span class="sourceLineNo">172</span>    }<a name="line.172"></a>
-<span class="sourceLineNo">173</span>  }<a name="line.173"></a>
-<span class="sourceLineNo">174</span><a name="line.174"></a>
-<span class="sourceLineNo">175</span>  /**<a name="line.175"></a>
-<span class="sourceLineNo">176</span>   * parses a facebook token response of format: access_token=ACCESS_TOKEN&amp;expires=SECONDS_TILL_EXPIRATION<a name="line.176"></a>
-<span class="sourceLineNo">177</span>   * <a name="line.177"></a>
-<span class="sourceLineNo">178</span>   * @param response<a name="line.178"></a>
-<span class="sourceLineNo">179</span>   * @return the token or null if invalid string<a name="line.179"></a>
-<span class="sourceLineNo">180</span>   */<a name="line.180"></a>
-<span class="sourceLineNo">181</span>  private static OAuth2Token fromResponse(String response){<a name="line.181"></a>
-<span class="sourceLineNo">182</span>    String[] params = StringUtils.split(response, DELIMITER_PARAMETERS);<a name="line.182"></a>
-<span class="sourceLineNo">183</span>    if(params == null || params.length  &lt; 2){<a name="line.183"></a>
-<span class="sourceLineNo">184</span>      LOGGER.debug("Invalid response: "+response);<a name="line.184"></a>
-<span class="sourceLineNo">185</span>      return null;<a name="line.185"></a>
-<span class="sourceLineNo">186</span>    }<a name="line.186"></a>
-<span class="sourceLineNo">187</span>    String accessToken = null;<a name="line.187"></a>
-<span class="sourceLineNo">188</span>    Long expiresIn = null;<a name="line.188"></a>
-<span class="sourceLineNo">189</span>    try{<a name="line.189"></a>
-<span class="sourceLineNo">190</span>      for(int i=0;i&lt;params.length;++i){<a name="line.190"></a>
-<span class="sourceLineNo">191</span>        String[] parts = StringUtils.split(params[i],DELIMITER_PARAMETER_VALUE);<a name="line.191"></a>
-<span class="sourceLineNo">192</span>        if(parts.length != 2){<a name="line.192"></a>
-<span class="sourceLineNo">193</span>          LOGGER.debug("Ignored invalid parameter: "+parts[i]);<a name="line.193"></a>
-<span class="sourceLineNo">194</span>        }else if(PARAMETER_EXPIRES.equalsIgnoreCase(parts[0])){<a name="line.194"></a>
-<span class="sourceLineNo">195</span>          expiresIn = Long.valueOf(parts[1]);<a name="line.195"></a>
-<span class="sourceLineNo">196</span>        }else if(PARAMETER_ACCESS_TOKEN.equalsIgnoreCase(parts[0])){<a name="line.196"></a>
-<span class="sourceLineNo">197</span>          accessToken = parts[1];<a name="line.197"></a>
-<span class="sourceLineNo">198</span>        }<a name="line.198"></a>
-<span class="sourceLineNo">199</span>      }<a name="line.199"></a>
-<span class="sourceLineNo">200</span>    } catch (NumberFormatException ex){<a name="line.200"></a>
-<span class="sourceLineNo">201</span>      LOGGER.error(ex, ex);<a name="line.201"></a>
-<span class="sourceLineNo">202</span>    }<a name="line.202"></a>
-<span class="sourceLineNo">203</span><a name="line.203"></a>
-<span class="sourceLineNo">204</span>    if(expiresIn == null || accessToken == null){<a name="line.204"></a>
-<span class="sourceLineNo">205</span>      LOGGER.debug("Did not receive valid token. "+PARAMETER_ACCESS_TOKEN+": "+accessToken+", "+PARAMETER_EXPIRES+": "+expiresIn);<a name="line.205"></a>
-<span class="sourceLineNo">206</span>      return null;<a name="line.206"></a>
-<span class="sourceLineNo">207</span>    }<a name="line.207"></a>
-<span class="sourceLineNo">208</span><a name="line.208"></a>
-<span class="sourceLineNo">209</span>    OAuth2Token token = new OAuth2Token();<a name="line.209"></a>
-<span class="sourceLineNo">210</span>    token.setAccessToken(accessToken);<a name="line.210"></a>
-<span class="sourceLineNo">211</span>    token.setExpiresIn(expiresIn);<a name="line.211"></a>
-<span class="sourceLineNo">212</span>    return token;<a name="line.212"></a>
-<span class="sourceLineNo">213</span>  }<a name="line.213"></a>
-<span class="sourceLineNo">214</span><a name="line.214"></a>
-<span class="sourceLineNo">215</span>  /**<a name="line.215"></a>
-<span class="sourceLineNo">216</span>   * <a name="line.216"></a>
-<span class="sourceLineNo">217</span>   * @param authorizedUser valid user id<a name="line.217"></a>
-<span class="sourceLineNo">218</span>   * @param redirectUri <a name="line.218"></a>
-<span class="sourceLineNo">219</span>   * @return redirection response<a name="line.219"></a>
-<span class="sourceLineNo">220</span>   */<a name="line.220"></a>
-<span class="sourceLineNo">221</span>  public static Response createAuthorizationRedirection(UserIdentity authorizedUser, String redirectUri) {<a name="line.221"></a>
-<span class="sourceLineNo">222</span>    FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.222"></a>
-<span class="sourceLineNo">223</span>    StringBuilder uri = new StringBuilder(fp.getoAuth2AuthUri());<a name="line.223"></a>
-<span class="sourceLineNo">224</span><a name="line.224"></a>
-<span class="sourceLineNo">225</span>    uri.append(Definitions.METHOD_FACEBOOK_AUTH+"?"+Definitions.PARAMETER_OAUTH2_SCOPE+"=");<a name="line.225"></a>
-<span class="sourceLineNo">226</span>    uri.append(fp.getoAuth2Scope());<a name="line.226"></a>
-<span class="sourceLineNo">227</span><a name="line.227"></a>
-<span class="sourceLineNo">228</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_STATE+"=");<a name="line.228"></a>
-<span class="sourceLineNo">229</span>    uri.append(UserCore.urlEncodedCombinedNonce(ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class).generateNonce(authorizedUser), redirectUri));<a name="line.229"></a>
-<span class="sourceLineNo">230</span><a name="line.230"></a>
-<span class="sourceLineNo">231</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_REDIRECT_URI+"=");<a name="line.231"></a>
-<span class="sourceLineNo">232</span>    uri.append(fp.getEncodedOAuth2RedirectUri());<a name="line.232"></a>
-<span class="sourceLineNo">233</span><a name="line.233"></a>
-<span class="sourceLineNo">234</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_ID+"=");<a name="line.234"></a>
-<span class="sourceLineNo">235</span>    uri.append(fp.getApplicationId());<a name="line.235"></a>
-<span class="sourceLineNo">236</span><a name="line.236"></a>
-<span class="sourceLineNo">237</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_RESPONSE_TYPE+"="+PARAMETER_VALUE_RESPONSE_TYPE);<a name="line.237"></a>
-<span class="sourceLineNo">238</span><a name="line.238"></a>
-<span class="sourceLineNo">239</span>    return new RedirectResponse(uri.toString());<a name="line.239"></a>
-<span class="sourceLineNo">240</span>  }<a name="line.240"></a>
-<span class="sourceLineNo">241</span>  <a name="line.241"></a>
-<span class="sourceLineNo">242</span>  /**<a name="line.242"></a>
-<span class="sourceLineNo">243</span>   * <a name="line.243"></a>
-<span class="sourceLineNo">244</span>   * @param authenticatedUser<a name="line.244"></a>
-<span class="sourceLineNo">245</span>   * @return response<a name="line.245"></a>
-<span class="sourceLineNo">246</span>   */<a name="line.246"></a>
-<span class="sourceLineNo">247</span>  public static Response removeAuthorization(UserIdentity authenticatedUser) {<a name="line.247"></a>
-<span class="sourceLineNo">248</span>    ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class).removeToken(authenticatedUser); // simply remove the token, as it is not possible to revoke facebook tokens, they should auto-expire after a certain time<a name="line.248"></a>
-<span class="sourceLineNo">249</span>    <a name="line.249"></a>
-<span class="sourceLineNo">250</span>    ServiceInitializer.getEventHandler().publishEvent(new UserEvent(FacebookUserCore.class, authenticatedUser, EventType.USER_AUTHORIZATION_REVOKED));  // send revoked event, this should trigger clean up on all relevant services<a name="line.250"></a>
-<span class="sourceLineNo">251</span>    return null;<a name="line.251"></a>
-<span class="sourceLineNo">252</span>  }<a name="line.252"></a>
-<span class="sourceLineNo">253</span><a name="line.253"></a>
-<span class="sourceLineNo">254</span>  /**<a name="line.254"></a>
-<span class="sourceLineNo">255</span>   * Retrieves the current token for the user if one is available<a name="line.255"></a>
-<span class="sourceLineNo">256</span>   * <a name="line.256"></a>
-<span class="sourceLineNo">257</span>   * Note: if the token expires, you should use this method to retrieve a new one, refreshing the token<a name="line.257"></a>
-<span class="sourceLineNo">258</span>   * manually may cause race condition with other services using the tokens (there can be only one active<a name="line.258"></a>
-<span class="sourceLineNo">259</span>   * and valid access token at any time)<a name="line.259"></a>
-<span class="sourceLineNo">260</span>   * <a name="line.260"></a>
-<span class="sourceLineNo">261</span>   * @param authorizedUser<a name="line.261"></a>
-<span class="sourceLineNo">262</span>   * @return token for the given user or null if not found<a name="line.262"></a>
-<span class="sourceLineNo">263</span>   */<a name="line.263"></a>
-<span class="sourceLineNo">264</span>  public static OAuth2Token getToken(UserIdentity authorizedUser){<a name="line.264"></a>
-<span class="sourceLineNo">265</span>    FacebookUserDAO dao = ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class);<a name="line.265"></a>
-<span class="sourceLineNo">266</span>    OAuth2Token token = dao.getToken(authorizedUser);<a name="line.266"></a>
-<span class="sourceLineNo">267</span>    if(token == null){<a name="line.267"></a>
-<span class="sourceLineNo">268</span>      return null;<a name="line.268"></a>
-<span class="sourceLineNo">269</span>    }<a name="line.269"></a>
-<span class="sourceLineNo">270</span>    <a name="line.270"></a>
-<span class="sourceLineNo">271</span>    String facebookUserId = dao.getFacebookUserId(authorizedUser);<a name="line.271"></a>
-<span class="sourceLineNo">272</span>    if(facebookUserId == null){<a name="line.272"></a>
-<span class="sourceLineNo">273</span>      LOGGER.warn("Failed to resolve facebook user id.");<a name="line.273"></a>
-<span class="sourceLineNo">274</span>      return null;<a name="line.274"></a>
-<span class="sourceLineNo">275</span>    }<a name="line.275"></a>
-<span class="sourceLineNo">276</span><a name="line.276"></a>
-<span class="sourceLineNo">277</span>    if(token.expiresIn(ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class).getTokenAutorefresh())){ // Facebook does not support refreshing tokens, so if a token has expired there really isn't much we can do<a name="line.277"></a>
-<span class="sourceLineNo">278</span>      token = refreshToken(token);<a name="line.278"></a>
-<span class="sourceLineNo">279</span>      if(token == null){<a name="line.279"></a>
-<span class="sourceLineNo">280</span>        dao.removeToken(authorizedUser);  // remove the invalid token from the database<a name="line.280"></a>
-<span class="sourceLineNo">281</span>      }else{<a name="line.281"></a>
-<span class="sourceLineNo">282</span>        dao.setToken(facebookUserId, token, authorizedUser);<a name="line.282"></a>
-<span class="sourceLineNo">283</span>      }<a name="line.283"></a>
-<span class="sourceLineNo">284</span>    }<a name="line.284"></a>
-<span class="sourceLineNo">285</span>    return token;<a name="line.285"></a>
-<span class="sourceLineNo">286</span>  }<a name="line.286"></a>
-<span class="sourceLineNo">287</span><a name="line.287"></a>
-<span class="sourceLineNo">288</span>  /**<a name="line.288"></a>
-<span class="sourceLineNo">289</span>   * <a name="line.289"></a>
-<span class="sourceLineNo">290</span>   * @param token<a name="line.290"></a>
-<span class="sourceLineNo">291</span>   * @return the refreshed token or null on failure, Note: the returned token may not be the same object as the passed object<a name="line.291"></a>
-<span class="sourceLineNo">292</span>   */<a name="line.292"></a>
-<span class="sourceLineNo">293</span>  private static OAuth2Token refreshToken(OAuth2Token token){<a name="line.293"></a>
-<span class="sourceLineNo">294</span>    if(token.isExpired()){<a name="line.294"></a>
-<span class="sourceLineNo">295</span>      LOGGER.debug("Expired or invalid token given.");<a name="line.295"></a>
-<span class="sourceLineNo">296</span>      return null;<a name="line.296"></a>
-<span class="sourceLineNo">297</span>    }<a name="line.297"></a>
-<span class="sourceLineNo">298</span>    try (CloseableHttpClient client = HttpClients.createDefault()) {<a name="line.298"></a>
-<span class="sourceLineNo">299</span>      FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.299"></a>
-<span class="sourceLineNo">300</span>      StringBuilder uri = new StringBuilder(fp.getoAuth2TokenUri());<a name="line.300"></a>
-<span class="sourceLineNo">301</span>      uri.append(Definitions.METHOD_FACEBOOK_ACCESS_TOKEN+"?"+Definitions.PARAMETER_OAUTH2_GRANT_TYPE+"="+PARAMETER_VALUE_REFRESH_GRANT_TYPE);<a name="line.301"></a>
-<span class="sourceLineNo">302</span><a name="line.302"></a>
-<span class="sourceLineNo">303</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_ID+"=");<a name="line.303"></a>
-<span class="sourceLineNo">304</span>      uri.append(fp.getApplicationId());<a name="line.304"></a>
-<span class="sourceLineNo">305</span><a name="line.305"></a>
-<span class="sourceLineNo">306</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_SECRET+"=");<a name="line.306"></a>
-<span class="sourceLineNo">307</span>      uri.append(fp.getSharedKey());<a name="line.307"></a>
-<span class="sourceLineNo">308</span><a name="line.308"></a>
-<span class="sourceLineNo">309</span>      uri.append("&amp;"+Definitions.PARAMETER_FACEBOOK_EXCHANGE_TOKEN+"=");<a name="line.309"></a>
-<span class="sourceLineNo">310</span>      uri.append(token.getAccessToken());<a name="line.310"></a>
-<span class="sourceLineNo">311</span><a name="line.311"></a>
-<span class="sourceLineNo">312</span>      OAuth2Token newToken = fromResponse(client.execute(new HttpGet(uri.toString()), new BasicResponseHandler()));<a name="line.312"></a>
-<span class="sourceLineNo">313</span>      if(newToken != null &amp;&amp; newToken.isValid()){<a name="line.313"></a>
-<span class="sourceLineNo">314</span>        return newToken;<a name="line.314"></a>
-<span class="sourceLineNo">315</span>      }<a name="line.315"></a>
-<span class="sourceLineNo">316</span>    } catch (IOException ex) {<a name="line.316"></a>
-<span class="sourceLineNo">317</span>      LOGGER.error(ex, ex);<a name="line.317"></a>
-<span class="sourceLineNo">318</span>    }<a name="line.318"></a>
-<span class="sourceLineNo">319</span>    return null;<a name="line.319"></a>
-<span class="sourceLineNo">320</span>  }<a name="line.320"></a>
-<span class="sourceLineNo">321</span>  <a name="line.321"></a>
-<span class="sourceLineNo">322</span>  /**<a name="line.322"></a>
-<span class="sourceLineNo">323</span>   * <a name="line.323"></a>
-<span class="sourceLineNo">324</span>   * @param userId<a name="line.324"></a>
-<span class="sourceLineNo">325</span>   * @return FacebookCredential for the requested userId or null if none available<a name="line.325"></a>
-<span class="sourceLineNo">326</span>   */<a name="line.326"></a>
-<span class="sourceLineNo">327</span>  public static FacebookCredential getCredential(UserIdentity userId){<a name="line.327"></a>
-<span class="sourceLineNo">328</span>    if(!UserIdentity.isValid(userId)){<a name="line.328"></a>
-<span class="sourceLineNo">329</span>      LOGGER.warn("Given userId was not valid.");<a name="line.329"></a>
-<span class="sourceLineNo">330</span>      return null;<a name="line.330"></a>
-<span class="sourceLineNo">331</span>    }<a name="line.331"></a>
-<span class="sourceLineNo">332</span><a name="line.332"></a>
-<span class="sourceLineNo">333</span>    OAuth2Token token = FacebookUserCore.getToken(userId);<a name="line.333"></a>
-<span class="sourceLineNo">334</span>    if(token == null){<a name="line.334"></a>
-<span class="sourceLineNo">335</span>      LOGGER.debug("User does not have valid Facebook credentials.");<a name="line.335"></a>
-<span class="sourceLineNo">336</span>      return null;<a name="line.336"></a>
-<span class="sourceLineNo">337</span>    }<a name="line.337"></a>
-<span class="sourceLineNo">338</span>    <a name="line.338"></a>
-<span class="sourceLineNo">339</span>    FacebookCredential credential = getCredential(token.getAccessToken());<a name="line.339"></a>
-<span class="sourceLineNo">340</span>    if(credential == null){<a name="line.340"></a>
-<span class="sourceLineNo">341</span>      LOGGER.debug("Failed to resolve credentials.");<a name="line.341"></a>
-<span class="sourceLineNo">342</span>    }else{<a name="line.342"></a>
-<span class="sourceLineNo">343</span>      credential.setUserId(userId);<a name="line.343"></a>
-<span class="sourceLineNo">344</span>    }<a name="line.344"></a>
-<span class="sourceLineNo">345</span>    return credential;<a name="line.345"></a>
-<span class="sourceLineNo">346</span>  }<a name="line.346"></a>
-<span class="sourceLineNo">347</span>  <a name="line.347"></a>
-<span class="sourceLineNo">348</span>  /**<a name="line.348"></a>
-<span class="sourceLineNo">349</span>   * Helper method for retrieving credentials from facebook servers<a name="line.349"></a>
-<span class="sourceLineNo">350</span>   * <a name="line.350"></a>
-<span class="sourceLineNo">351</span>   * @param accessToken<a name="line.351"></a>
-<span class="sourceLineNo">352</span>   * @return the credential for the access token or null if not found<a name="line.352"></a>
-<span class="sourceLineNo">353</span>   */<a name="line.353"></a>
-<span class="sourceLineNo">354</span>  private static FacebookCredential getCredential(String accessToken){<a name="line.354"></a>
-<span class="sourceLineNo">355</span>    FacebookCredential credential = null;<a name="line.355"></a>
-<span class="sourceLineNo">356</span>    try(CloseableHttpClient client = HttpClients.createDefault()){<a name="line.356"></a>
-<span class="sourceLineNo">357</span>      FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.357"></a>
-<span class="sourceLineNo">358</span>      credential = (OAuth2Token.getTokenGSONSerializer()).fromJson(client.execute(new HttpGet(fp.getoAuth2UserInfoUri()+"?"+Definitions.PARAMETER_OAUTH2_ACCESS_TOKEN+"="+accessToken), new BasicResponseHandler()), FacebookCredential.class);<a name="line.358"></a>
-<span class="sourceLineNo">359</span>    } catch (IOException ex) {<a name="line.359"></a>
-<span class="sourceLineNo">360</span>      LOGGER.error(ex, ex);<a name="line.360"></a>
-<span class="sourceLineNo">361</span>    }<a name="line.361"></a>
-<span class="sourceLineNo">362</span>    <a name="line.362"></a>
-<span class="sourceLineNo">363</span>    return credential;<a name="line.363"></a>
-<span class="sourceLineNo">364</span>  }<a name="line.364"></a>
-<span class="sourceLineNo">365</span><a name="line.365"></a>
-<span class="sourceLineNo">366</span>  /**<a name="line.366"></a>
-<span class="sourceLineNo">367</span>   * <a name="line.367"></a>
-<span class="sourceLineNo">368</span>   * @param session<a name="line.368"></a>
-<span class="sourceLineNo">369</span>   * @param accessToken<a name="line.369"></a>
-<span class="sourceLineNo">370</span>   * @return response<a name="line.370"></a>
-<span class="sourceLineNo">371</span>   */<a name="line.371"></a>
-<span class="sourceLineNo">372</span>  public static Response login(HttpSession session, String accessToken) {<a name="line.372"></a>
-<span class="sourceLineNo">373</span>    FacebookCredential credential = getCredential(accessToken);<a name="line.373"></a>
-<span class="sourceLineNo">374</span>    if(credential == null){<a name="line.374"></a>
-<span class="sourceLineNo">375</span>      return new Response(Status.BAD_REQUEST, "Failed to process the given token.");<a name="line.375"></a>
-<span class="sourceLineNo">376</span>    }<a name="line.376"></a>
-<span class="sourceLineNo">377</span>    <a name="line.377"></a>
-<span class="sourceLineNo">378</span>    UserIdentity userId = UserCore.getUserId(new ExternalAccountConnection(credential.getId(), UserServiceType.FACEBOOK));<a name="line.378"></a>
-<span class="sourceLineNo">379</span>    if(!UserIdentity.isValid(userId)){<a name="line.379"></a>
-<span class="sourceLineNo">380</span>      return new Response(Status.FORBIDDEN, "The given Facebook user is not registered with this service, please register before login.");<a name="line.380"></a>
-<span class="sourceLineNo">381</span>    }<a name="line.381"></a>
-<span class="sourceLineNo">382</span>    <a name="line.382"></a>
-<span class="sourceLineNo">383</span>    ServiceInitializer.getSessionHandler().registerAndAuthenticate(session.getId(), userId);<a name="line.383"></a>
-<span class="sourceLineNo">384</span>    return new Response();<a name="line.384"></a>
-<span class="sourceLineNo">385</span>  }<a name="line.385"></a>
-<span class="sourceLineNo">386</span><a name="line.386"></a>
-<span class="sourceLineNo">387</span>  /**<a name="line.387"></a>
-<span class="sourceLineNo">388</span>   * <a name="line.388"></a>
-<span class="sourceLineNo">389</span>   * @param accessToken<a name="line.389"></a>
-<span class="sourceLineNo">390</span>   * @return response<a name="line.390"></a>
-<span class="sourceLineNo">391</span>   */<a name="line.391"></a>
-<span class="sourceLineNo">392</span>  public static Response register(String accessToken) {<a name="line.392"></a>
-<span class="sourceLineNo">393</span>    FacebookCredential credential = getCredential(accessToken);<a name="line.393"></a>
-<span class="sourceLineNo">394</span>    if(credential == null){<a name="line.394"></a>
-<span class="sourceLineNo">395</span>      return new Response(Status.BAD_REQUEST, "Failed to process the given token.");<a name="line.395"></a>
-<span class="sourceLineNo">396</span>    }<a name="line.396"></a>
-<span class="sourceLineNo">397</span>    <a name="line.397"></a>
-<span class="sourceLineNo">398</span>    ExternalAccountConnection connection = new ExternalAccountConnection(credential.getId(), UserServiceType.FACEBOOK);<a name="line.398"></a>
-<span class="sourceLineNo">399</span>    UserIdentity userId = UserCore.getUserId(connection);<a name="line.399"></a>
-<span class="sourceLineNo">400</span>    if(userId != null){<a name="line.400"></a>
-<span class="sourceLineNo">401</span>      return new Response(Status.BAD_REQUEST, "The user is already registered with this service.");<a name="line.401"></a>
-<span class="sourceLineNo">402</span>    }<a name="line.402"></a>
-<span class="sourceLineNo">403</span>    <a name="line.403"></a>
-<span class="sourceLineNo">404</span>    Registration registration = new Registration();<a name="line.404"></a>
-<span class="sourceLineNo">405</span>    String facebookUserId = credential.getId();<a name="line.405"></a>
-<span class="sourceLineNo">406</span>    registration.setUsername(UserServiceType.FACEBOOK.name()+facebookUserId); // use prefix to prevent collisions with other services<a name="line.406"></a>
-<span class="sourceLineNo">407</span>    registration.setPassword(RandomStringUtils.randomAlphanumeric(50)); // create a random password for this account<a name="line.407"></a>
-<span class="sourceLineNo">408</span>    <a name="line.408"></a>
-<span class="sourceLineNo">409</span>    RegistrationStatus status = UserCore.createUser(registration); // register as new user<a name="line.409"></a>
-<span class="sourceLineNo">410</span>    if(status != RegistrationStatus.OK){<a name="line.410"></a>
-<span class="sourceLineNo">411</span>      return new Response(Status.BAD_REQUEST, "Failed to create new user: "+status.name());<a name="line.411"></a>
-<span class="sourceLineNo">412</span>    }<a name="line.412"></a>
-<span class="sourceLineNo">413</span>    <a name="line.413"></a>
-<span class="sourceLineNo">414</span>    connection.setExternalId(facebookUserId);<a name="line.414"></a>
-<span class="sourceLineNo">415</span>    UserCore.insertExternalAccountConnection(connection, registration.getRegisteredUserId()); // link the created user to the given account<a name="line.415"></a>
-<span class="sourceLineNo">416</span>    return new Response();<a name="line.416"></a>
-<span class="sourceLineNo">417</span>  }<a name="line.417"></a>
-<span class="sourceLineNo">418</span>  <a name="line.418"></a>
-<span class="sourceLineNo">419</span>  /**<a name="line.419"></a>
-<span class="sourceLineNo">420</span>   * Event listener for user related events.<a name="line.420"></a>
-<span class="sourceLineNo">421</span>   * <a name="line.421"></a>
-<span class="sourceLineNo">422</span>   * Automatically instantiated by Spring as a bean.<a name="line.422"></a>
-<span class="sourceLineNo">423</span>   */<a name="line.423"></a>
-<span class="sourceLineNo">424</span>  @SuppressWarnings("unused")<a name="line.424"></a>
-<span class="sourceLineNo">425</span>  private static class UserEventListener implements ApplicationListener&lt;UserServiceEvent&gt;{<a name="line.425"></a>
-<span class="sourceLineNo">426</span><a name="line.426"></a>
-<span class="sourceLineNo">427</span>    @Override<a name="line.427"></a>
-<span class="sourceLineNo">428</span>    public void onApplicationEvent(UserServiceEvent event) {<a name="line.428"></a>
-<span class="sourceLineNo">429</span>      EventType type = event.getType();<a name="line.429"></a>
-<span class="sourceLineNo">430</span>      if(type == EventType.USER_REMOVED || (type == EventType.USER_AUTHORIZATION_REVOKED &amp;&amp; event.getSource().equals(UserCore.class) &amp;&amp; UserServiceType.FACEBOOK.equals(event.getUserServiceType()))){<a name="line.430"></a>
-<span class="sourceLineNo">431</span>        UserIdentity userId = event.getUserId();<a name="line.431"></a>
-<span class="sourceLineNo">432</span>        LOGGER.debug("Detected event of type "+type.name()+", removing tokens for user, id: "+userId.getUserId());<a name="line.432"></a>
-<span class="sourceLineNo">433</span>        ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class).removeToken(userId);<a name="line.433"></a>
-<span class="sourceLineNo">434</span>        <a name="line.434"></a>
-<span class="sourceLineNo">435</span>        ServiceInitializer.getEventHandler().publishEvent(new UserEvent(FacebookUserCore.class, userId, EventType.USER_AUTHORIZATION_REVOKED));  // send revoked event, this should trigger clean up on all relevant services<a name="line.435"></a>
-<span class="sourceLineNo">436</span>      }<a name="line.436"></a>
-<span class="sourceLineNo">437</span>    }<a name="line.437"></a>
-<span class="sourceLineNo">438</span>  } // class UserEventListener<a name="line.438"></a>
-<span class="sourceLineNo">439</span>}<a name="line.439"></a>
+<span class="sourceLineNo">032</span>import service.tut.pori.users.UserCore;<a name="line.32"></a>
+<span class="sourceLineNo">033</span>import service.tut.pori.users.UserCore.Registration;<a name="line.33"></a>
+<span class="sourceLineNo">034</span>import service.tut.pori.users.UserCore.RegistrationStatus;<a name="line.34"></a>
+<span class="sourceLineNo">035</span>import service.tut.pori.users.UserServiceEvent;<a name="line.35"></a>
+<span class="sourceLineNo">036</span>import service.tut.pori.users.google.OAuth2Token;<a name="line.36"></a>
+<span class="sourceLineNo">037</span>import core.tut.pori.context.ServiceInitializer;<a name="line.37"></a>
+<span class="sourceLineNo">038</span>import core.tut.pori.http.RedirectResponse;<a name="line.38"></a>
+<span class="sourceLineNo">039</span>import core.tut.pori.http.Response;<a name="line.39"></a>
+<span class="sourceLineNo">040</span>import core.tut.pori.http.Response.Status;<a name="line.40"></a>
+<span class="sourceLineNo">041</span>import core.tut.pori.users.ExternalAccountConnection;<a name="line.41"></a>
+<span class="sourceLineNo">042</span>import core.tut.pori.users.UserEvent;<a name="line.42"></a>
+<span class="sourceLineNo">043</span>import core.tut.pori.users.ExternalAccountConnection.UserServiceType;<a name="line.43"></a>
+<span class="sourceLineNo">044</span>import core.tut.pori.users.UserEvent.EventType;<a name="line.44"></a>
+<span class="sourceLineNo">045</span>import core.tut.pori.users.UserIdentity;<a name="line.45"></a>
+<span class="sourceLineNo">046</span><a name="line.46"></a>
+<span class="sourceLineNo">047</span>/**<a name="line.47"></a>
+<span class="sourceLineNo">048</span> * Facebook User Service Core methods.<a name="line.48"></a>
+<span class="sourceLineNo">049</span> * <a name="line.49"></a>
+<span class="sourceLineNo">050</span> * This implementation follows:<a name="line.50"></a>
+<span class="sourceLineNo">051</span> * <a name="line.51"></a>
+<span class="sourceLineNo">052</span> * refreshing tokens:<a name="line.52"></a>
+<span class="sourceLineNo">053</span> * http://developers.facebook.com/docs/facebook-login/access-tokens/#extending<a name="line.53"></a>
+<span class="sourceLineNo">054</span> * http://stackoverflow.com/questions/16563692/refresh-token-and-access-token-in-facebook-api<a name="line.54"></a>
+<span class="sourceLineNo">055</span> * <a name="line.55"></a>
+<span class="sourceLineNo">056</span> * http://developers.facebook.com/docs/facebook-login/login-flow-for-web-no-jssdk/<a name="line.56"></a>
+<span class="sourceLineNo">057</span> * <a name="line.57"></a>
+<span class="sourceLineNo">058</span> * This class emits events of type {@link core.tut.pori.users.UserEvent} for user account modifications with one of the listed {@link core.tut.pori.users.UserEvent.EventType} :<a name="line.58"></a>
+<span class="sourceLineNo">059</span> * &lt;ul&gt;<a name="line.59"></a>
+<span class="sourceLineNo">060</span> *  &lt;li&gt;{@link core.tut.pori.users.UserEvent.EventType#USER_AUTHORIZATION_GIVEN} for new user account authorizations.&lt;/li&gt;<a name="line.60"></a>
+<span class="sourceLineNo">061</span> *  &lt;li&gt;{@link core.tut.pori.users.UserEvent.EventType#USER_AUTHORIZATION_REVOKED} for removed user account authorizations.&lt;/li&gt;<a name="line.61"></a>
+<span class="sourceLineNo">062</span> * &lt;/ul&gt;<a name="line.62"></a>
+<span class="sourceLineNo">063</span> */<a name="line.63"></a>
+<span class="sourceLineNo">064</span>public final class FacebookUserCore {<a name="line.64"></a>
+<span class="sourceLineNo">065</span>  private static final Logger LOGGER = Logger.getLogger(FacebookUserCore.class);<a name="line.65"></a>
+<span class="sourceLineNo">066</span>  private static final char DELIMITER_PARAMETER_VALUE = '=';<a name="line.66"></a>
+<span class="sourceLineNo">067</span>  private static final char DELIMITER_PARAMETERS = '&amp;';<a name="line.67"></a>
+<span class="sourceLineNo">068</span>  private static final String PARAMETER_ACCESS_TOKEN = Definitions.PARAMETER_OAUTH2_ACCESS_TOKEN; // facebook specific body-parameter<a name="line.68"></a>
+<span class="sourceLineNo">069</span>  private static final String PARAMETER_EXPIRES = "expires"; // facebook specific body parameter<a name="line.69"></a>
+<span class="sourceLineNo">070</span>  private static final String PARAMETER_VALUE_REFRESH_GRANT_TYPE = "fb_exchange_token";<a name="line.70"></a>
+<span class="sourceLineNo">071</span>  private static final String PARAMETER_VALUE_RESPONSE_TYPE = "code";<a name="line.71"></a>
+<span class="sourceLineNo">072</span>  <a name="line.72"></a>
+<span class="sourceLineNo">073</span><a name="line.73"></a>
+<span class="sourceLineNo">074</span>  /**<a name="line.74"></a>
+<span class="sourceLineNo">075</span>   * <a name="line.75"></a>
+<span class="sourceLineNo">076</span>   */<a name="line.76"></a>
+<span class="sourceLineNo">077</span>  private FacebookUserCore(){<a name="line.77"></a>
+<span class="sourceLineNo">078</span>    // nothing needed<a name="line.78"></a>
+<span class="sourceLineNo">079</span>  }<a name="line.79"></a>
+<span class="sourceLineNo">080</span><a name="line.80"></a>
+<span class="sourceLineNo">081</span>  /**<a name="line.81"></a>
+<span class="sourceLineNo">082</span>   * <a name="line.82"></a>
+<span class="sourceLineNo">083</span>   * @param authorizationCode<a name="line.83"></a>
+<span class="sourceLineNo">084</span>   * @param errorCode<a name="line.84"></a>
+<span class="sourceLineNo">085</span>   * @param nonce<a name="line.85"></a>
+<span class="sourceLineNo">086</span>   * @return response<a name="line.86"></a>
+<span class="sourceLineNo">087</span>   */<a name="line.87"></a>
+<span class="sourceLineNo">088</span>  public static Response processOAuth2Callback(String authorizationCode, String errorCode, String nonce) {<a name="line.88"></a>
+<span class="sourceLineNo">089</span>    if(StringUtils.isBlank(nonce)){<a name="line.89"></a>
+<span class="sourceLineNo">090</span>      LOGGER.debug("nonce is missing.");<a name="line.90"></a>
+<span class="sourceLineNo">091</span>      return new Response(Status.BAD_REQUEST);<a name="line.91"></a>
+<span class="sourceLineNo">092</span>    }<a name="line.92"></a>
+<span class="sourceLineNo">093</span><a name="line.93"></a>
+<span class="sourceLineNo">094</span>    //Try to split nonce for a redirection URL<a name="line.94"></a>
+<span class="sourceLineNo">095</span>    Pair&lt;String, String&gt; nonceAndUrl = UserCore.getNonceAndRedirectUri(nonce);<a name="line.95"></a>
+<span class="sourceLineNo">096</span>    String redirectUri = null;<a name="line.96"></a>
+<span class="sourceLineNo">097</span>    if(nonceAndUrl != null){<a name="line.97"></a>
+<span class="sourceLineNo">098</span>      nonce = nonceAndUrl.getLeft();<a name="line.98"></a>
+<span class="sourceLineNo">099</span>      redirectUri = nonceAndUrl.getRight();<a name="line.99"></a>
+<span class="sourceLineNo">100</span>    }else{<a name="line.100"></a>
+<span class="sourceLineNo">101</span>      redirectUri = null;<a name="line.101"></a>
+<span class="sourceLineNo">102</span>    }<a name="line.102"></a>
+<span class="sourceLineNo">103</span>    <a name="line.103"></a>
+<span class="sourceLineNo">104</span>    FacebookUserDAO dao = ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class);<a name="line.104"></a>
+<span class="sourceLineNo">105</span><a name="line.105"></a>
+<span class="sourceLineNo">106</span>    if(!StringUtils.isEmpty(errorCode)){<a name="line.106"></a>
+<span class="sourceLineNo">107</span>      dao.removeNonce(nonce); // in any case, do not allow to use this nonce again<a name="line.107"></a>
+<span class="sourceLineNo">108</span>      LOGGER.debug("Received callback request with errorCode: "+errorCode);<a name="line.108"></a>
+<span class="sourceLineNo">109</span>      if(StringUtils.isEmpty(redirectUri)){<a name="line.109"></a>
+<span class="sourceLineNo">110</span>        return new Response(Status.OK, errorCode);<a name="line.110"></a>
+<span class="sourceLineNo">111</span>      }else if(redirectUri.contains("?")){<a name="line.111"></a>
+<span class="sourceLineNo">112</span>        return new RedirectResponse(redirectUri+"&amp;error="+errorCode);<a name="line.112"></a>
+<span class="sourceLineNo">113</span>      }else{<a name="line.113"></a>
+<span class="sourceLineNo">114</span>        return new RedirectResponse(redirectUri+"?error="+errorCode);<a name="line.114"></a>
+<span class="sourceLineNo">115</span>      }<a name="line.115"></a>
+<span class="sourceLineNo">116</span>    }<a name="line.116"></a>
+<span class="sourceLineNo">117</span><a name="line.117"></a>
+<span class="sourceLineNo">118</span>    UserIdentity userId = dao.getUser(nonce);<a name="line.118"></a>
+<span class="sourceLineNo">119</span>    if(userId == null){ // the nonce do not exist or has expired<a name="line.119"></a>
+<span class="sourceLineNo">120</span>      LOGGER.debug("Received callback request with expired or invalid nonce: "+nonce);<a name="line.120"></a>
+<span class="sourceLineNo">121</span>      return new Response(Status.BAD_REQUEST);<a name="line.121"></a>
+<span class="sourceLineNo">122</span>    }<a name="line.122"></a>
+<span class="sourceLineNo">123</span><a name="line.123"></a>
+<span class="sourceLineNo">124</span>    dao.removeNonce(nonce); // in any case, do not allow to use this nonce again<a name="line.124"></a>
+<span class="sourceLineNo">125</span><a name="line.125"></a>
+<span class="sourceLineNo">126</span>    if(StringUtils.isBlank(authorizationCode)){<a name="line.126"></a>
+<span class="sourceLineNo">127</span>      LOGGER.debug("no authorization code.");<a name="line.127"></a>
+<span class="sourceLineNo">128</span>      return new Response(Status.BAD_REQUEST);<a name="line.128"></a>
+<span class="sourceLineNo">129</span>    }<a name="line.129"></a>
+<span class="sourceLineNo">130</span><a name="line.130"></a>
+<span class="sourceLineNo">131</span>    try (CloseableHttpClient client = HttpClients.createDefault()) {<a name="line.131"></a>
+<span class="sourceLineNo">132</span>      FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.132"></a>
+<span class="sourceLineNo">133</span>      StringBuilder uri = new StringBuilder(fp.getoAuth2TokenUri());<a name="line.133"></a>
+<span class="sourceLineNo">134</span>      uri.append(Definitions.METHOD_FACEBOOK_ACCESS_TOKEN+"?"+Definitions.PARAMETER_OAUTH2_CLIENT_ID+"=");<a name="line.134"></a>
+<span class="sourceLineNo">135</span>      uri.append(fp.getApplicationId());<a name="line.135"></a>
+<span class="sourceLineNo">136</span><a name="line.136"></a>
+<span class="sourceLineNo">137</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_REDIRECT_URI+"=");<a name="line.137"></a>
+<span class="sourceLineNo">138</span>      uri.append(fp.getEncodedOAuth2RedirectUri());<a name="line.138"></a>
+<span class="sourceLineNo">139</span><a name="line.139"></a>
+<span class="sourceLineNo">140</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_SECRET+"=");<a name="line.140"></a>
+<span class="sourceLineNo">141</span>      uri.append(fp.getSharedKey());<a name="line.141"></a>
+<span class="sourceLineNo">142</span><a name="line.142"></a>
+<span class="sourceLineNo">143</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_AUTHORIZATION_CODE+"=");<a name="line.143"></a>
+<span class="sourceLineNo">144</span>      uri.append(authorizationCode);<a name="line.144"></a>
+<span class="sourceLineNo">145</span><a name="line.145"></a>
+<span class="sourceLineNo">146</span>      OAuth2Token newToken = fromResponse(client.execute(new HttpGet(uri.toString()), new BasicResponseHandler()));<a name="line.146"></a>
+<span class="sourceLineNo">147</span>      if(newToken != null &amp;&amp; newToken.isValid()){<a name="line.147"></a>
+<span class="sourceLineNo">148</span>        FacebookCredential fc = getCredential(newToken.getAccessToken());<a name="line.148"></a>
+<span class="sourceLineNo">149</span>        if(fc == null){<a name="line.149"></a>
+<span class="sourceLineNo">150</span>          LOGGER.error("Failed to resolve credentials for the new token.");<a name="line.150"></a>
+<span class="sourceLineNo">151</span>          return new Response(Status.INTERNAL_SERVER_ERROR);<a name="line.151"></a>
+<span class="sourceLineNo">152</span>        }   <a name="line.152"></a>
+<span class="sourceLineNo">153</span>        <a name="line.153"></a>
+<span class="sourceLineNo">154</span>        if(!dao.setToken(fc.getId(), newToken, userId)){<a name="line.154"></a>
+<span class="sourceLineNo">155</span>          LOGGER.warn("Failed to set new token.");<a name="line.155"></a>
+<span class="sourceLineNo">156</span>          return new Response(Status.BAD_REQUEST);<a name="line.156"></a>
+<span class="sourceLineNo">157</span>        }<a name="line.157"></a>
+<span class="sourceLineNo">158</span>        <a name="line.158"></a>
+<span class="sourceLineNo">159</span>        ServiceInitializer.getEventHandler().publishEvent(new UserEvent(FacebookUserCore.class, userId, EventType.USER_AUTHORIZATION_GIVEN));<a name="line.159"></a>
+<span class="sourceLineNo">160</span>      }else{<a name="line.160"></a>
+<span class="sourceLineNo">161</span>        LOGGER.debug("Did not receive a valid token.");<a name="line.161"></a>
+<span class="sourceLineNo">162</span>      }<a name="line.162"></a>
+<span class="sourceLineNo">163</span>    } catch (IOException ex) {<a name="line.163"></a>
+<span class="sourceLineNo">164</span>      LOGGER.error(ex, ex);<a name="line.164"></a>
+<span class="sourceLineNo">165</span>    } <a name="line.165"></a>
+<span class="sourceLineNo">166</span>    <a name="line.166"></a>
+<span class="sourceLineNo">167</span>    if(StringUtils.isEmpty(redirectUri)){<a name="line.167"></a>
+<span class="sourceLineNo">168</span>      return new Response();<a name="line.168"></a>
+<span class="sourceLineNo">169</span>    }else{<a name="line.169"></a>
+<span class="sourceLineNo">170</span>      return new RedirectResponse(redirectUri);<a name="line.170"></a>
+<span class="sourceLineNo">171</span>    }<a name="line.171"></a>
+<span class="sourceLineNo">172</span>  }<a name="line.172"></a>
+<span class="sourceLineNo">173</span><a name="line.173"></a>
+<span class="sourceLineNo">174</span>  /**<a name="line.174"></a>
+<span class="sourceLineNo">175</span>   * parses a facebook token response of format: access_token=ACCESS_TOKEN&amp;expires=SECONDS_TILL_EXPIRATION<a name="line.175"></a>
+<span class="sourceLineNo">176</span>   * <a name="line.176"></a>
+<span class="sourceLineNo">177</span>   * @param response<a name="line.177"></a>
+<span class="sourceLineNo">178</span>   * @return the token or null if invalid string<a name="line.178"></a>
+<span class="sourceLineNo">179</span>   */<a name="line.179"></a>
+<span class="sourceLineNo">180</span>  private static OAuth2Token fromResponse(String response){<a name="line.180"></a>
+<span class="sourceLineNo">181</span>    String[] params = StringUtils.split(response, DELIMITER_PARAMETERS);<a name="line.181"></a>
+<span class="sourceLineNo">182</span>    if(params == null || params.length  &lt; 2){<a name="line.182"></a>
+<span class="sourceLineNo">183</span>      LOGGER.debug("Invalid response: "+response);<a name="line.183"></a>
+<span class="sourceLineNo">184</span>      return null;<a name="line.184"></a>
+<span class="sourceLineNo">185</span>    }<a name="line.185"></a>
+<span class="sourceLineNo">186</span>    String accessToken = null;<a name="line.186"></a>
+<span class="sourceLineNo">187</span>    Long expiresIn = null;<a name="line.187"></a>
+<span class="sourceLineNo">188</span>    try{<a name="line.188"></a>
+<span class="sourceLineNo">189</span>      for(int i=0;i&lt;params.length;++i){<a name="line.189"></a>
+<span class="sourceLineNo">190</span>        String[] parts = StringUtils.split(params[i],DELIMITER_PARAMETER_VALUE);<a name="line.190"></a>
+<span class="sourceLineNo">191</span>        if(parts.length != 2){<a name="line.191"></a>
+<span class="sourceLineNo">192</span>          LOGGER.debug("Ignored invalid parameter: "+parts[i]);<a name="line.192"></a>
+<span class="sourceLineNo">193</span>        }else if(PARAMETER_EXPIRES.equalsIgnoreCase(parts[0])){<a name="line.193"></a>
+<span class="sourceLineNo">194</span>          expiresIn = Long.valueOf(parts[1]);<a name="line.194"></a>
+<span class="sourceLineNo">195</span>        }else if(PARAMETER_ACCESS_TOKEN.equalsIgnoreCase(parts[0])){<a name="line.195"></a>
+<span class="sourceLineNo">196</span>          accessToken = parts[1];<a name="line.196"></a>
+<span class="sourceLineNo">197</span>        }<a name="line.197"></a>
+<span class="sourceLineNo">198</span>      }<a name="line.198"></a>
+<span class="sourceLineNo">199</span>    } catch (NumberFormatException ex){<a name="line.199"></a>
+<span class="sourceLineNo">200</span>      LOGGER.error(ex, ex);<a name="line.200"></a>
+<span class="sourceLineNo">201</span>    }<a name="line.201"></a>
+<span class="sourceLineNo">202</span><a name="line.202"></a>
+<span class="sourceLineNo">203</span>    if(expiresIn == null || accessToken == null){<a name="line.203"></a>
+<span class="sourceLineNo">204</span>      LOGGER.debug("Did not receive valid token. "+PARAMETER_ACCESS_TOKEN+": "+accessToken+", "+PARAMETER_EXPIRES+": "+expiresIn);<a name="line.204"></a>
+<span class="sourceLineNo">205</span>      return null;<a name="line.205"></a>
+<span class="sourceLineNo">206</span>    }<a name="line.206"></a>
+<span class="sourceLineNo">207</span><a name="line.207"></a>
+<span class="sourceLineNo">208</span>    OAuth2Token token = new OAuth2Token();<a name="line.208"></a>
+<span class="sourceLineNo">209</span>    token.setAccessToken(accessToken);<a name="line.209"></a>
+<span class="sourceLineNo">210</span>    token.setExpiresIn(expiresIn);<a name="line.210"></a>
+<span class="sourceLineNo">211</span>    return token;<a name="line.211"></a>
+<span class="sourceLineNo">212</span>  }<a name="line.212"></a>
+<span class="sourceLineNo">213</span><a name="line.213"></a>
+<span class="sourceLineNo">214</span>  /**<a name="line.214"></a>
+<span class="sourceLineNo">215</span>   * <a name="line.215"></a>
+<span class="sourceLineNo">216</span>   * @param authorizedUser valid user id<a name="line.216"></a>
+<span class="sourceLineNo">217</span>   * @param redirectUri <a name="line.217"></a>
+<span class="sourceLineNo">218</span>   * @return redirection response<a name="line.218"></a>
+<span class="sourceLineNo">219</span>   */<a name="line.219"></a>
+<span class="sourceLineNo">220</span>  public static Response createAuthorizationRedirection(UserIdentity authorizedUser, String redirectUri) {<a name="line.220"></a>
+<span class="sourceLineNo">221</span>    FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.221"></a>
+<span class="sourceLineNo">222</span>    StringBuilder uri = new StringBuilder(fp.getoAuth2AuthUri());<a name="line.222"></a>
+<span class="sourceLineNo">223</span><a name="line.223"></a>
+<span class="sourceLineNo">224</span>    uri.append(Definitions.METHOD_FACEBOOK_AUTH+"?"+Definitions.PARAMETER_OAUTH2_SCOPE+"=");<a name="line.224"></a>
+<span class="sourceLineNo">225</span>    uri.append(fp.getoAuth2Scope());<a name="line.225"></a>
+<span class="sourceLineNo">226</span><a name="line.226"></a>
+<span class="sourceLineNo">227</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_STATE+"=");<a name="line.227"></a>
+<span class="sourceLineNo">228</span>    uri.append(UserCore.urlEncodedCombinedNonce(ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class).generateNonce(authorizedUser), redirectUri));<a name="line.228"></a>
+<span class="sourceLineNo">229</span><a name="line.229"></a>
+<span class="sourceLineNo">230</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_REDIRECT_URI+"=");<a name="line.230"></a>
+<span class="sourceLineNo">231</span>    uri.append(fp.getEncodedOAuth2RedirectUri());<a name="line.231"></a>
+<span class="sourceLineNo">232</span><a name="line.232"></a>
+<span class="sourceLineNo">233</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_ID+"=");<a name="line.233"></a>
+<span class="sourceLineNo">234</span>    uri.append(fp.getApplicationId());<a name="line.234"></a>
+<span class="sourceLineNo">235</span><a name="line.235"></a>
+<span class="sourceLineNo">236</span>    uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_RESPONSE_TYPE+"="+PARAMETER_VALUE_RESPONSE_TYPE);<a name="line.236"></a>
+<span class="sourceLineNo">237</span><a name="line.237"></a>
+<span class="sourceLineNo">238</span>    return new RedirectResponse(uri.toString());<a name="line.238"></a>
+<span class="sourceLineNo">239</span>  }<a name="line.239"></a>
+<span class="sourceLineNo">240</span>  <a name="line.240"></a>
+<span class="sourceLineNo">241</span>  /**<a name="line.241"></a>
+<span class="sourceLineNo">242</span>   * <a name="line.242"></a>
+<span class="sourceLineNo">243</span>   * @param authenticatedUser<a name="line.243"></a>
+<span class="sourceLineNo">244</span>   * @return response<a name="line.244"></a>
+<span class="sourceLineNo">245</span>   */<a name="line.245"></a>
+<span class="sourceLineNo">246</span>  public static Response removeAuthorization(UserIdentity authenticatedUser) {<a name="line.246"></a>
+<span class="sourceLineNo">247</span>    ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class).removeToken(authenticatedUser); // simply remove the token, as it is not possible to revoke facebook tokens, they should auto-expire after a certain time<a name="line.247"></a>
+<span class="sourceLineNo">248</span>    <a name="line.248"></a>
+<span class="sourceLineNo">249</span>    ServiceInitializer.getEventHandler().publishEvent(new UserEvent(FacebookUserCore.class, authenticatedUser, EventType.USER_AUTHORIZATION_REVOKED));  // send revoked event, this should trigger clean up on all relevant services<a name="line.249"></a>
+<span class="sourceLineNo">250</span>    return null;<a name="line.250"></a>
+<span class="sourceLineNo">251</span>  }<a name="line.251"></a>
+<span class="sourceLineNo">252</span><a name="line.252"></a>
+<span class="sourceLineNo">253</span>  /**<a name="line.253"></a>
+<span class="sourceLineNo">254</span>   * Retrieves the current token for the user if one is available<a name="line.254"></a>
+<span class="sourceLineNo">255</span>   * <a name="line.255"></a>
+<span class="sourceLineNo">256</span>   * Note: if the token expires, you should use this method to retrieve a new one, refreshing the token<a name="line.256"></a>
+<span class="sourceLineNo">257</span>   * manually may cause race condition with other services using the tokens (there can be only one active<a name="line.257"></a>
+<span class="sourceLineNo">258</span>   * and valid access token at any time)<a name="line.258"></a>
+<span class="sourceLineNo">259</span>   * <a name="line.259"></a>
+<span class="sourceLineNo">260</span>   * @param authorizedUser<a name="line.260"></a>
+<span class="sourceLineNo">261</span>   * @return token for the given user or null if not found<a name="line.261"></a>
+<span class="sourceLineNo">262</span>   */<a name="line.262"></a>
+<span class="sourceLineNo">263</span>  public static OAuth2Token getToken(UserIdentity authorizedUser){<a name="line.263"></a>
+<span class="sourceLineNo">264</span>    FacebookUserDAO dao = ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class);<a name="line.264"></a>
+<span class="sourceLineNo">265</span>    OAuth2Token token = dao.getToken(authorizedUser);<a name="line.265"></a>
+<span class="sourceLineNo">266</span>    if(token == null){<a name="line.266"></a>
+<span class="sourceLineNo">267</span>      return null;<a name="line.267"></a>
+<span class="sourceLineNo">268</span>    }<a name="line.268"></a>
+<span class="sourceLineNo">269</span>    <a name="line.269"></a>
+<span class="sourceLineNo">270</span>    String facebookUserId = dao.getFacebookUserId(authorizedUser);<a name="line.270"></a>
+<span class="sourceLineNo">271</span>    if(facebookUserId == null){<a name="line.271"></a>
+<span class="sourceLineNo">272</span>      LOGGER.warn("Failed to resolve facebook user id.");<a name="line.272"></a>
+<span class="sourceLineNo">273</span>      return null;<a name="line.273"></a>
+<span class="sourceLineNo">274</span>    }<a name="line.274"></a>
+<span class="sourceLineNo">275</span><a name="line.275"></a>
+<span class="sourceLineNo">276</span>    if(token.expiresIn(ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class).getTokenAutorefresh())){ // Facebook does not support refreshing tokens, so if a token has expired there really isn't much we can do<a name="line.276"></a>
+<span class="sourceLineNo">277</span>      token = refreshToken(token);<a name="line.277"></a>
+<span class="sourceLineNo">278</span>      if(token == null){<a name="line.278"></a>
+<span class="sourceLineNo">279</span>        dao.removeToken(authorizedUser);  // remove the invalid token from the database<a name="line.279"></a>
+<span class="sourceLineNo">280</span>      }else{<a name="line.280"></a>
+<span class="sourceLineNo">281</span>        dao.setToken(facebookUserId, token, authorizedUser);<a name="line.281"></a>
+<span class="sourceLineNo">282</span>      }<a name="line.282"></a>
+<span class="sourceLineNo">283</span>    }<a name="line.283"></a>
+<span class="sourceLineNo">284</span>    return token;<a name="line.284"></a>
+<span class="sourceLineNo">285</span>  }<a name="line.285"></a>
+<span class="sourceLineNo">286</span><a name="line.286"></a>
+<span class="sourceLineNo">287</span>  /**<a name="line.287"></a>
+<span class="sourceLineNo">288</span>   * <a name="line.288"></a>
+<span class="sourceLineNo">289</span>   * @param token<a name="line.289"></a>
+<span class="sourceLineNo">290</span>   * @return the refreshed token or null on failure, Note: the returned token may not be the same object as the passed object<a name="line.290"></a>
+<span class="sourceLineNo">291</span>   */<a name="line.291"></a>
+<span class="sourceLineNo">292</span>  private static OAuth2Token refreshToken(OAuth2Token token){<a name="line.292"></a>
+<span class="sourceLineNo">293</span>    if(token.isExpired()){<a name="line.293"></a>
+<span class="sourceLineNo">294</span>      LOGGER.debug("Expired or invalid token given.");<a name="line.294"></a>
+<span class="sourceLineNo">295</span>      return null;<a name="line.295"></a>
+<span class="sourceLineNo">296</span>    }<a name="line.296"></a>
+<span class="sourceLineNo">297</span>    try (CloseableHttpClient client = HttpClients.createDefault()) {<a name="line.297"></a>
+<span class="sourceLineNo">298</span>      FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.298"></a>
+<span class="sourceLineNo">299</span>      StringBuilder uri = new StringBuilder(fp.getoAuth2TokenUri());<a name="line.299"></a>
+<span class="sourceLineNo">300</span>      uri.append(Definitions.METHOD_FACEBOOK_ACCESS_TOKEN+"?"+Definitions.PARAMETER_OAUTH2_GRANT_TYPE+"="+PARAMETER_VALUE_REFRESH_GRANT_TYPE);<a name="line.300"></a>
+<span class="sourceLineNo">301</span><a name="line.301"></a>
+<span class="sourceLineNo">302</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_ID+"=");<a name="line.302"></a>
+<span class="sourceLineNo">303</span>      uri.append(fp.getApplicationId());<a name="line.303"></a>
+<span class="sourceLineNo">304</span><a name="line.304"></a>
+<span class="sourceLineNo">305</span>      uri.append("&amp;"+Definitions.PARAMETER_OAUTH2_CLIENT_SECRET+"=");<a name="line.305"></a>
+<span class="sourceLineNo">306</span>      uri.append(fp.getSharedKey());<a name="line.306"></a>
+<span class="sourceLineNo">307</span><a name="line.307"></a>
+<span class="sourceLineNo">308</span>      uri.append("&amp;"+Definitions.PARAMETER_FACEBOOK_EXCHANGE_TOKEN+"=");<a name="line.308"></a>
+<span class="sourceLineNo">309</span>      uri.append(token.getAccessToken());<a name="line.309"></a>
+<span class="sourceLineNo">310</span><a name="line.310"></a>
+<span class="sourceLineNo">311</span>      OAuth2Token newToken = fromResponse(client.execute(new HttpGet(uri.toString()), new BasicResponseHandler()));<a name="line.311"></a>
+<span class="sourceLineNo">312</span>      if(newToken != null &amp;&amp; newToken.isValid()){<a name="line.312"></a>
+<span class="sourceLineNo">313</span>        return newToken;<a name="line.313"></a>
+<span class="sourceLineNo">314</span>      }<a name="line.314"></a>
+<span class="sourceLineNo">315</span>    } catch (IOException ex) {<a name="line.315"></a>
+<span class="sourceLineNo">316</span>      LOGGER.error(ex, ex);<a name="line.316"></a>
+<span class="sourceLineNo">317</span>    }<a name="line.317"></a>
+<span class="sourceLineNo">318</span>    return null;<a name="line.318"></a>
+<span class="sourceLineNo">319</span>  }<a name="line.319"></a>
+<span class="sourceLineNo">320</span>  <a name="line.320"></a>
+<span class="sourceLineNo">321</span>  /**<a name="line.321"></a>
+<span class="sourceLineNo">322</span>   * <a name="line.322"></a>
+<span class="sourceLineNo">323</span>   * @param userId<a name="line.323"></a>
+<span class="sourceLineNo">324</span>   * @return FacebookCredential for the requested userId or null if none available<a name="line.324"></a>
+<span class="sourceLineNo">325</span>   */<a name="line.325"></a>
+<span class="sourceLineNo">326</span>  public static FacebookCredential getCredential(UserIdentity userId){<a name="line.326"></a>
+<span class="sourceLineNo">327</span>    if(!UserIdentity.isValid(userId)){<a name="line.327"></a>
+<span class="sourceLineNo">328</span>      LOGGER.warn("Given userId was not valid.");<a name="line.328"></a>
+<span class="sourceLineNo">329</span>      return null;<a name="line.329"></a>
+<span class="sourceLineNo">330</span>    }<a name="line.330"></a>
+<span class="sourceLineNo">331</span><a name="line.331"></a>
+<span class="sourceLineNo">332</span>    OAuth2Token token = FacebookUserCore.getToken(userId);<a name="line.332"></a>
+<span class="sourceLineNo">333</span>    if(token == null){<a name="line.333"></a>
+<span class="sourceLineNo">334</span>      LOGGER.debug("User does not have valid Facebook credentials.");<a name="line.334"></a>
+<span class="sourceLineNo">335</span>      return null;<a name="line.335"></a>
+<span class="sourceLineNo">336</span>    }<a name="line.336"></a>
+<span class="sourceLineNo">337</span>    <a name="line.337"></a>
+<span class="sourceLineNo">338</span>    FacebookCredential credential = getCredential(token.getAccessToken());<a name="line.338"></a>
+<span class="sourceLineNo">339</span>    if(credential == null){<a name="line.339"></a>
+<span class="sourceLineNo">340</span>      LOGGER.debug("Failed to resolve credentials.");<a name="line.340"></a>
+<span class="sourceLineNo">341</span>    }else{<a name="line.341"></a>
+<span class="sourceLineNo">342</span>      credential.setUserId(userId);<a name="line.342"></a>
+<span class="sourceLineNo">343</span>    }<a name="line.343"></a>
+<span class="sourceLineNo">344</span>    return credential;<a name="line.344"></a>
+<span class="sourceLineNo">345</span>  }<a name="line.345"></a>
+<span class="sourceLineNo">346</span>  <a name="line.346"></a>
+<span class="sourceLineNo">347</span>  /**<a name="line.347"></a>
+<span class="sourceLineNo">348</span>   * Helper method for retrieving credentials from facebook servers<a name="line.348"></a>
+<span class="sourceLineNo">349</span>   * <a name="line.349"></a>
+<span class="sourceLineNo">350</span>   * @param accessToken<a name="line.350"></a>
+<span class="sourceLineNo">351</span>   * @return the credential for the access token or null if not found<a name="line.351"></a>
+<span class="sourceLineNo">352</span>   */<a name="line.352"></a>
+<span class="sourceLineNo">353</span>  private static FacebookCredential getCredential(String accessToken){<a name="line.353"></a>
+<span class="sourceLineNo">354</span>    FacebookCredential credential = null;<a name="line.354"></a>
+<span class="sourceLineNo">355</span>    try(CloseableHttpClient client = HttpClients.createDefault()){<a name="line.355"></a>
+<span class="sourceLineNo">356</span>      FacebookProperties fp = ServiceInitializer.getPropertyHandler().getSystemProperties(FacebookProperties.class);<a name="line.356"></a>
+<span class="sourceLineNo">357</span>      credential = (OAuth2Token.getTokenGSONSerializer()).fromJson(client.execute(new HttpGet(fp.getoAuth2UserInfoUri()+"?"+Definitions.PARAMETER_OAUTH2_ACCESS_TOKEN+"="+accessToken), new BasicResponseHandler()), FacebookCredential.class);<a name="line.357"></a>
+<span class="sourceLineNo">358</span>    } catch (IOException ex) {<a name="line.358"></a>
+<span class="sourceLineNo">359</span>      LOGGER.error(ex, ex);<a name="line.359"></a>
+<span class="sourceLineNo">360</span>    }<a name="line.360"></a>
+<span class="sourceLineNo">361</span>    <a name="line.361"></a>
+<span class="sourceLineNo">362</span>    return credential;<a name="line.362"></a>
+<span class="sourceLineNo">363</span>  }<a name="line.363"></a>
+<span class="sourceLineNo">364</span><a name="line.364"></a>
+<span class="sourceLineNo">365</span>  /**<a name="line.365"></a>
+<span class="sourceLineNo">366</span>   * <a name="line.366"></a>
+<span class="sourceLineNo">367</span>   * @param session<a name="line.367"></a>
+<span class="sourceLineNo">368</span>   * @param accessToken<a name="line.368"></a>
+<span class="sourceLineNo">369</span>   * @return response<a name="line.369"></a>
+<span class="sourceLineNo">370</span>   */<a name="line.370"></a>
+<span class="sourceLineNo">371</span>  public static Response login(HttpSession session, String accessToken) {<a name="line.371"></a>
+<span class="sourceLineNo">372</span>    FacebookCredential credential = getCredential(accessToken);<a name="line.372"></a>
+<span class="sourceLineNo">373</span>    if(credential == null){<a name="line.373"></a>
+<span class="sourceLineNo">374</span>      return new Response(Status.BAD_REQUEST, "Failed to process the given token.");<a name="line.374"></a>
+<span class="sourceLineNo">375</span>    }<a name="line.375"></a>
+<span class="sourceLineNo">376</span>    <a name="line.376"></a>
+<span class="sourceLineNo">377</span>    UserIdentity userId = UserCore.getUserId(new ExternalAccountConnection(credential.getId(), UserServiceType.FACEBOOK));<a name="line.377"></a>
+<span class="sourceLineNo">378</span>    if(!UserIdentity.isValid(userId)){<a name="line.378"></a>
+<span class="sourceLineNo">379</span>      return new Response(Status.FORBIDDEN, "The given Facebook user is not registered with this service, please register before login.");<a name="line.379"></a>
+<span class="sourceLineNo">380</span>    }<a name="line.380"></a>
+<span class="sourceLineNo">381</span>    <a name="line.381"></a>
+<span class="sourceLineNo">382</span>    ServiceInitializer.getSessionHandler().registerAndAuthenticate(session.getId(), userId);<a name="line.382"></a>
+<span class="sourceLineNo">383</span>    return new Response();<a name="line.383"></a>
+<span class="sourceLineNo">384</span>  }<a name="line.384"></a>
+<span class="sourceLineNo">385</span><a name="line.385"></a>
+<span class="sourceLineNo">386</span>  /**<a name="line.386"></a>
+<span class="sourceLineNo">387</span>   * <a name="line.387"></a>
+<span class="sourceLineNo">388</span>   * @param accessToken<a name="line.388"></a>
+<span class="sourceLineNo">389</span>   * @return response<a name="line.389"></a>
+<span class="sourceLineNo">390</span>   */<a name="line.390"></a>
+<span class="sourceLineNo">391</span>  public static Response register(String accessToken) {<a name="line.391"></a>
+<span class="sourceLineNo">392</span>    FacebookCredential credential = getCredential(accessToken);<a name="line.392"></a>
+<span class="sourceLineNo">393</span>    if(credential == null){<a name="line.393"></a>
+<span class="sourceLineNo">394</span>      return new Response(Status.BAD_REQUEST, "Failed to process the given token.");<a name="line.394"></a>
+<span class="sourceLineNo">395</span>    }<a name="line.395"></a>
+<span class="sourceLineNo">396</span>    <a name="line.396"></a>
+<span class="sourceLineNo">397</span>    ExternalAccountConnection connection = new ExternalAccountConnection(credential.getId(), UserServiceType.FACEBOOK);<a name="line.397"></a>
+<span class="sourceLineNo">398</span>    UserIdentity userId = UserCore.getUserId(connection);<a name="line.398"></a>
+<span class="sourceLineNo">399</span>    if(userId != null){<a name="line.399"></a>
+<span class="sourceLineNo">400</span>      return new Response(Status.BAD_REQUEST, "The user is already registered with this service.");<a name="line.400"></a>
+<span class="sourceLineNo">401</span>    }<a name="line.401"></a>
+<span class="sourceLineNo">402</span>    <a name="line.402"></a>
+<span class="sourceLineNo">403</span>    Registration registration = new Registration();<a name="line.403"></a>
+<span class="sourceLineNo">404</span>    String facebookUserId = credential.getId();<a name="line.404"></a>
+<span class="sourceLineNo">405</span>    registration.setUsername(UserServiceType.FACEBOOK.name()+facebookUserId); // use prefix to prevent collisions with other services<a name="line.405"></a>
+<span class="sourceLineNo">406</span>    registration.setPassword(RandomStringUtils.randomAlphanumeric(50)); // create a random password for this account<a name="line.406"></a>
+<span class="sourceLineNo">407</span>    <a name="line.407"></a>
+<span class="sourceLineNo">408</span>    RegistrationStatus status = UserCore.createUser(registration); // register as new user<a name="line.408"></a>
+<span class="sourceLineNo">409</span>    if(status != RegistrationStatus.OK){<a name="line.409"></a>
+<span class="sourceLineNo">410</span>      return new Response(Status.BAD_REQUEST, "Failed to create new user: "+status.name());<a name="line.410"></a>
+<span class="sourceLineNo">411</span>    }<a name="line.411"></a>
+<span class="sourceLineNo">412</span>    <a name="line.412"></a>
+<span class="sourceLineNo">413</span>    connection.setExternalId(facebookUserId);<a name="line.413"></a>
+<span class="sourceLineNo">414</span>    UserCore.insertExternalAccountConnection(connection, registration.getRegisteredUserId()); // link the created user to the given account<a name="line.414"></a>
+<span class="sourceLineNo">415</span>    return new Response();<a name="line.415"></a>
+<span class="sourceLineNo">416</span>  }<a name="line.416"></a>
+<span class="sourceLineNo">417</span>  <a name="line.417"></a>
+<span class="sourceLineNo">418</span>  /**<a name="line.418"></a>
+<span class="sourceLineNo">419</span>   * Event listener for user related events.<a name="line.419"></a>
+<span class="sourceLineNo">420</span>   * <a name="line.420"></a>
+<span class="sourceLineNo">421</span>   * Automatically instantiated by Spring as a bean.<a name="line.421"></a>
+<span class="sourceLineNo">422</span>   */<a name="line.422"></a>
+<span class="sourceLineNo">423</span>  @SuppressWarnings("unused")<a name="line.423"></a>
+<span class="sourceLineNo">424</span>  private static class UserEventListener implements ApplicationListener&lt;UserServiceEvent&gt;{<a name="line.424"></a>
+<span class="sourceLineNo">425</span><a name="line.425"></a>
+<span class="sourceLineNo">426</span>    @Override<a name="line.426"></a>
+<span class="sourceLineNo">427</span>    public void onApplicationEvent(UserServiceEvent event) {<a name="line.427"></a>
+<span class="sourceLineNo">428</span>      EventType type = event.getType();<a name="line.428"></a>
+<span class="sourceLineNo">429</span>      if(type == EventType.USER_REMOVED || (type == EventType.USER_AUTHORIZATION_REVOKED &amp;&amp; event.getSource().equals(UserCore.class) &amp;&amp; UserServiceType.FACEBOOK.equals(event.getUserServiceType()))){<a name="line.429"></a>
+<span class="sourceLineNo">430</span>        UserIdentity userId = event.getUserId();<a name="line.430"></a>
+<span class="sourceLineNo">431</span>        LOGGER.debug("Detected event of type "+type.name()+", removing tokens for user, id: "+userId.getUserId());<a name="line.431"></a>
+<span class="sourceLineNo">432</span>        ServiceInitializer.getDAOHandler().getSQLDAO(FacebookUserDAO.class).removeToken(userId);<a name="line.432"></a>
+<span class="sourceLineNo">433</span>        <a name="line.433"></a>
+<span class="sourceLineNo">434</span>        ServiceInitializer.getEventHandler().publishEvent(new UserEvent(FacebookUserCore.class, userId, EventType.USER_AUTHORIZATION_REVOKED));  // send revoked event, this should trigger clean up on all relevant services<a name="line.434"></a>
+<span class="sourceLineNo">435</span>      }<a name="line.435"></a>
+<span class="sourceLineNo">436</span>    }<a name="line.436"></a>
+<span class="sourceLineNo">437</span>  } // class UserEventListener<a name="line.437"></a>
+<span class="sourceLineNo">438</span>}<a name="line.438"></a>
 
 
 
